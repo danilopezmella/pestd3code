@@ -219,14 +219,15 @@ class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
         const regex = /^\*\s*(.+)|^\+\+\s*/; // Detecta líneas que comienzan con '* ' o '++'
         const emojiMap: Record<string, string> = {
             "Control data": "🔧",
-            "Singular value decomposition": "🔢",
+            "Singular value decomposition": "🧮",
             "Parameter groups": "📂🪨",
             "Parameter data": "🪨",
-            "Observation groups": "📂👁️",
+            "Observation groups": "📂🔍",
             "Observation data": "🔍",
-            "Model command line": "🖥️",
-            "Model input/output": "⬆️⬇️",
-            "Pest++ section": "➕",
+            "Model command line": "💻",
+            "Model input/output": "🧩",
+            "Pest++ section": "🌐",
+            
         };
 
         let inPestPlusSection = false; // Bandera para bloques Pest++

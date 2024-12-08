@@ -1,7 +1,7 @@
 {
   "name": "pesd3code",
   "displayName": "PestD3code",
-  "description": "Enhance readability and usability of PEST control files for MODFLOW.",
+  "description": "Enhance readability and usability of PEST control files for MODFLOW with structured decorators, hover support, and interactive features.",
   "publisher": "GWModels-Cl",
   "icon": "images/icon.png",
   "version": "0.0.2",
@@ -12,8 +12,8 @@
     "Other"
   ],
   "repository": {
-  "type": "git",
-  "url": "https://github.com/danilopezmella/pest4all.git"
+    "type": "git",
+    "url": "https://github.com/danilopezmella/pestd3code.git"
   },
   "activationEvents": [
     "workspaceContains:**/*.{pst,pest}",
@@ -23,10 +23,10 @@
   "contributes": {
     "configurationDefaults": {
       "[pst]": {
-          "editor.showFoldingControls": "always",
-          "editor.guides.indentation": true
+        "editor.showFoldingControls": "always",
+        "editor.guides.indentation": true
       }
-  },
+    },
     "commands": [
       {
         "command": "pestd3code.activate",

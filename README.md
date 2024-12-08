@@ -1,33 +1,46 @@
-# Pest4All
+# PestD3code
 
-Welcome to **Pest4All**, a VS Code extension designed to enhance the readability and usability of PEST control files for MODFLOW. This extension helps users by adding structured decorators and hover support for better interpretation and editing of .pst and .pest files.
+Welcome to **PestD3code**, a VS Code extension designed to enhance the readability and usability of PEST control files for MODFLOW. This extension helps users by adding structured decorators and hover support for better interpretation and editing of .pst and .pest files.
 
 ## Features
+
+### 🎨 Visual Enhancements
 
 - **Hover Tooltips:**
   - Provides detailed descriptions of PEST control variables with Markdown-formatted tooltips.
   - Includes variable descriptions, types, allowed values, and whether the variable is mandatory.
-  
-- **Support for .pst and .pest Files:**
-  - Automatically activates when .pst or .pest files are detected in the workspace.
-  - Associates these file types with PEST control variables for enhanced development workflows.
+  - Specific colors for sections, floats, strings, and integers for easy visualization.
 
 - **Collapsible Sections:**
   - Users can now collapse or expand sections of the PEST control file for easier navigation and organization.
 
-- **Quick Access to PEST Manual:**
-  - A quick link to the PEST manual is now included in the first line of the file, opening the manual in a parallel window for easy reference.
+- **Outline Panel Integration:**
+  - Navigate through the file effortlessly using the Outline panel with icons for each section.
+
+### 📂 File Interaction
 
 - **Clickable File Paths:**
   - File paths in the **Model Input/Output** and **Model Command Line** sections are now clickable.
   - Clicking a file path opens the file in the system's default editor (if the file exists).
   - If the file does not exist, the extension notifies the user to help identify missing or incorrect paths.
 
+### 📖 Quick Access to PEST Manual
+
+- A quick link to the PEST manual is now included in the first line of the file, opening the manual in a parallel window for easy reference.
+
+### 📝 Section Descriptions
+
 - **Parameter Group Descriptions:**
   - Provides hover descriptions for the **Parameter Groups** section, explaining group-specific settings and options.
 
-- **Future Plans:** *(Not Yet Implemented)*
-  - **Hover other sections:** Hover over the rest of the PCF.
+- **Parameter Data, Observation Group, and Observation Data Values:**
+  - Brief explanations of values in each section.
+  - Hover over each section of these parameters for the code value.
+
+### 🧩 Pest++ Instructions
+
+- **Hover Tooltips for Pest++ Attributes:**
+  - Hover over Pest++ attributes to see code for each variable and description.
 
 ## Requirements
 
@@ -35,11 +48,11 @@ Welcome to **Pest4All**, a VS Code extension designed to enhance the readability
 
 ## Installation
 
-1. Install the extension from the Visual Studio Code Marketplace or download the .vsix file.  
-2. Open a workspace containing .pst or .pest files.  
-3. Use folding to collapse or expand individual sections of the file for easier navigation and organization.  
-4. Hover over any PEST **Control data**, **Singular value decomposition**, and **Parameter Groups** sections to see detailed information.  
-5. Click on file paths in the **Model Input/Output** and **Model Command Line** sections to open them in your default editor. If the file does not exist, you will be notified.  
+1. Install the extension from the Visual Studio Code Marketplace or download the .vsix file.
+2. Open a workspace containing .pst or .pest files.
+3. Use folding to collapse or expand individual sections of the file for easier navigation and organization.
+4. Hover over any PEST **Control data**, **Singular value decomposition**, **Parameter Groups**, **Parameter Data**, **Observation Groups**, **Observation Data** and **PEST++** sections to see detailed information.
+5. Click on file paths in the **Model Input/Output** and **Model Command Line** sections to open them in your default editor. If the file does not exist, you will be notified.
 6. Access the PEST manual quickly by clicking the link included in the first line of the file. The manual opens in a parallel window.
 
 ## Extension Settings
@@ -54,6 +67,16 @@ This extension does not yet provide configurable settings. Future releases may i
 
 ## Release Notes
 
+### 0.0.3
+
+- Added hover support for **Control data**, **Singular value decomposition**, **Parameter Data**, **Observation Groups**, and **Observation Data** sections.
+- Enhanced Outline panel with icons for each section for easier navigation.
+- Improved color coding for sections, floats, strings, and integers for better visualization.
+- Implemented clickable file paths in the **Model Input/Output** and **Model Command Line** sections.
+- Added Pest++ instructions with hover tooltips for Pest++ attributes.
+- Fixed issues with workspace activation for deeply nested .pst or .pest files.
+- Improved handling of optional values in the **Control Data** section.
+
 ### 0.0.2
 
 - Added collapsible sections for better navigation.
@@ -63,7 +86,7 @@ This extension does not yet provide configurable settings. Future releases may i
 
 ### 0.0.1
 
-- Initial release of Pest4All.
+- Initial release of PestD3code.
 
 ## Following Extension Guidelines
 
@@ -73,10 +96,10 @@ This extension adheres to the best practices outlined in the Visual Studio Code 
 
 ## Project Status
 
-**Pest4All is currently in active development.** Features and functionalities are being continuously added and refined. If you encounter any issues or have suggestions, feel free to reach out.
+**PestD3code is currently in active development.** Features and functionalities are being continuously added and refined. If you encounter any issues or have suggestions, feel free to reach out.
 
 ## Contact
 
 For inquiries, feedback, or support, please contact me at **[gwm@gwmodels.cl](mailto:gwm@gwmodels.cl)**.
 
-**Thank you for using Pest4All!**
+**Thank you for using PestD3code!**
