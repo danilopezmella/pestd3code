@@ -65,8 +65,7 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "jest --coverage",
-    "test:extension": "node ./node_modules/@vscode/test-electron/out/index.js"
+    "test": "vscode-test"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
