@@ -1,0 +1,83 @@
+{
+  "name": "pesd3code",
+  "displayName": "PestD3code",
+  "description": "Enhance readability and usability of PEST control files for MODFLOW.",
+  "publisher": "GWModels-Cl",
+  "icon": "images/icon.png",
+  "version": "0.0.2",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "repository": {
+  "type": "git",
+  "url": "https://github.com/danilopezmella/pest4all.git"
+  },
+  "activationEvents": [
+    "workspaceContains:**/*.{pst,pest}",
+    "onLanguage:pestlang"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configurationDefaults": {
+      "[pst]": {
+          "editor.showFoldingControls": "always",
+          "editor.guides.indentation": true
+      }
+  },
+    "commands": [
+      {
+        "command": "pestd3code.activate",
+        "title": "Activate PestD3code"
+      },
+      {
+        "command": "extension.openManual",
+        "title": "Open PEST++ Manual"
+      }
+    ],
+    "languages": [
+      {
+        "id": "pst",
+        "extensions": [
+          ".pst",
+          ".pest"
+        ],
+        "aliases": [
+          "PEST File"
+        ],
+        "configuration": "./syntaxes/pst-language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "pst",
+        "scopeName": "source.pst",
+        "path": "./syntaxes/pst.tmLanguage.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.9",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.95.0",
+    "@typescript-eslint/eslint-plugin": "^8.10.0",
+    "@typescript-eslint/parser": "^8.7.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "eslint": "^9.13.0",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "csv-parse": "^5.6.0"
+  }
+}

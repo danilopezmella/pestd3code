@@ -1,0 +1,11 @@
+{
+    "folding": {
+        "markers": {
+            "start": "^\\s*\\*\\s?.*$",   // Detectar cualquier línea que comienza con "*" (permitir espacios opcionales antes y después del asterisco)
+            "end": "^\\s*\\*\\s?.*$"      // Terminar cuando encuentra una línea que NO comienza con "*"
+        }
+    },
+    "comments": {
+        "lineComment": "#"
+    }
+}
