@@ -259,7 +259,7 @@ class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
                     inPestPlusSection = true;
 
                     const symbol = new vscode.SymbolInformation(
-                        "➕➕ PEST++ section",
+                        "🌐 PEST++ section",
                         vscode.SymbolKind.Field,
                         "",
                         new vscode.Location(document.uri, new vscode.Range(i, 0, i, line.length))

@@ -22,9 +22,5 @@ jobs:
     - run: npm run build
     - name: Install xvfb
       run: sudo apt-get install xvfb
-    - name: Run tests with coverage
+    - name: Run tests
       run: xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" npm test
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}

@@ -58,16 +58,16 @@
       }
     ]
   },
- "scripts": {
-  "vscode:prepublish": "npm run compile",
-  "build": "npm run vscode:prepublish",
-  "compile": "tsc -p ./",
-  "watch": "tsc -watch -p ./",
-  "pretest": "npm run compile && npm run lint",
-  "lint": "eslint src",
-  "test": "jest --coverage",
-  "test:extension": "node ./node_modules/@vscode/test-electron/out/index.js"
-},
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "build": "npm run vscode:prepublish",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "jest --coverage",
+    "test:extension": "node ./node_modules/@vscode/test-electron/out/index.js"
+  },
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/mocha": "^10.0.9",
