@@ -1,5 +1,7 @@
 # PestD3code
 
+![Build Status](https://github.com/danilopezmella/pestd3code/actions/workflows/ci.yml/badge.svg)
+
 Welcome to **PestD3code**, a VS Code extension designed to enhance the readability and usability of PEST control files for MODFLOW. This extension helps users by adding structured decorators and hover support for better interpretation and editing of .pst and .pest files.
 
 ## Features
