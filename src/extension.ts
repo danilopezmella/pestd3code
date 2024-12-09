@@ -245,10 +245,21 @@ class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
             "Observation data": "🔍",
             "Model command line": "💻",
             "Model input/output": "🧩",
-            "Prior information": "🗂️",  // Icono para Prior Information
-            "Regularization": "⚖️",    // Icono para Regularization
+            "Prior information": "🗂️",  
+            "Regularization": "⚖️",    
             "PEST++ section": "🌐",
         };
+
+           // Agregar símbolo especial para abrir el manual
+        symbols.push(new vscode.SymbolInformation(
+            "📖 Open Manual",
+            vscode.SymbolKind.Field,
+            "",
+            new vscode.Location(
+                document.uri,
+                new vscode.Range(0, 0, 0, 0)
+            )
+        ));
 
         let inPestPlusSection = false; // Bandera para bloques Pest++
         let currentSymbol: vscode.SymbolInformation | null = null;
