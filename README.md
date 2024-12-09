@@ -77,6 +77,7 @@ This extension does not yet provide configurable settings. Future releases may i
 - Added support for **Prior Information** section with appropriate emoji.
 - Added support for **Regularization** section with descriptions for each value.
 - Improved handling of optional values in the **Control Data** section.
+- Added **Open Manual** to the Outline.
 
 ### 0.0.3
 
