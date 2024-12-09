@@ -1,7 +1,7 @@
 # PestD3code
 
 ![Build Status](https://github.com/danilopezmella/pestd3code/actions/workflows/ci.yml/badge.svg)
-![Version](https://img.shields.io/badge/version-0.0.3-blue)
+![Version](https://img.shields.io/badge/version-0.0.4-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)
 
@@ -69,36 +69,7 @@ This extension does not yet provide configurable settings. Future releases may i
 - Some variables with highly customized formats may not display correct hover information.
 - Workspace activation might fail if .pst or .pest files are deeply nested.
 - Inconsistencies remain in handling the **Control Data** section, particularly with optional values (in progress).
-
-## Release Notes
-
-### 0.0.4
-
-- Added support for **Prior Information** section with appropriate emoji.
-- Added support for **Regularization** section with descriptions for each value.
-- Improved handling of optional values in the **Control Data** section.
-- Added **Open Manual** to the Outline.
-
-### 0.0.3
-
-- Added hover support for **Control data**, **Singular value decomposition**, **Parameter Data**, **Observation Groups**, and **Observation Data** sections.
-- Enhanced Outline panel with icons for each section for easier navigation.
-- Improved color coding for sections, floats, strings, and integers for better visualization.
-- Implemented clickable file paths in the **Model Input/Output** and **Model Command Line** sections.
-- Added Pest++ instructions with hover tooltips for Pest++ attributes.
-- Fixed issues with workspace activation for deeply nested .pst or .pest files.
-- Improved handling of optional values in the **Control Data** section.
-
-### 0.0.2
-
-- Added collapsible sections for better navigation.
-- Included a quick access link to the PEST manual in the first line of the file.
-- Added hover descriptions for the **Parameter Groups** section.
-- Highlighted ongoing work on handling optional values in the **Control Data** section.
-
-### 0.0.1
-
-- Initial release of PestD3code.
+al release of PestD3code.
 
 ## Following Extension Guidelines
 
