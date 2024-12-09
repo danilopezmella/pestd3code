@@ -2,9 +2,9 @@
   "name": "pesd3code",
   "displayName": "PestD3code",
   "description": "Enhance readability and usability of PEST control files for MODFLOW with structured decorators, hover support, and interactive features.",
-  "publisher": "GWModels-Cl",
+  "publisher": "DanielLopezMella",
   "icon": "images/icon.png",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "engines": {
     "vscode": "^1.95.0"
   },

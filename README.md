@@ -72,6 +72,12 @@ This extension does not yet provide configurable settings. Future releases may i
 
 ## Release Notes
 
+### 0.0.4
+
+- Added support for **Prior Information** section with appropriate emoji.
+- Added support for **Regularization** section with descriptions for each value.
+- Improved handling of optional values in the **Control Data** section.
+
 ### 0.0.3
 
 - Added hover support for **Control data**, **Singular value decomposition**, **Parameter Data**, **Observation Groups**, and **Observation Data** sections.

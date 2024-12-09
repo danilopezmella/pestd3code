@@ -207,6 +207,26 @@ const svdDataStructure = [
     ],
     [{ name: "EIGWRITE", type: "integer", required: true }],
 ];
+
+const regularizationDataStructure = [
+    [
+        { name: "PHIMLIM", type: "float", required: true },
+        { name: "PHIMACCEPT", type: "float", required: true },
+        { name: "FRACPHIM", type: "float", required: false },
+    ],
+    [
+        { name: "WFINIT", type: "float", required: true },
+        { name: "WFMIN", type: "float", required: true },
+        { name: "WFMAX", type: "float", required: true },
+    ],
+    [
+        { name: "WFFAC", type: "float", required: true },
+        { name: "WFTOL", type: "float", required: true },
+        { name: "IREGADJ", type: "integer", required: false },
+    ],
+];
+
+
 // #endregion Define the structure of the PEST control file
 // #region Document Symbol Provider
 class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
@@ -215,7 +235,6 @@ class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
         _token: vscode.CancellationToken
     ): vscode.ProviderResult<vscode.SymbolInformation[]> {
         const symbols: vscode.SymbolInformation[] = [];
-
         const regex = /^\*\s*(.+)|^\+\+\s*/; // Detecta líneas que comienzan con '* ' o '++'
         const emojiMap: Record<string, string> = {
             "Control data": "🔧",
@@ -226,11 +245,13 @@ class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
             "Observation data": "🔍",
             "Model command line": "💻",
             "Model input/output": "🧩",
-            "Pest++ section": "🌐",
-            
+            "Prior information": "🗂️",  // Icono para Prior Information
+            "Regularization": "⚖️",    // Icono para Regularization
+            "PEST++ section": "🌐",
         };
 
         let inPestPlusSection = false; // Bandera para bloques Pest++
+        let currentSymbol: vscode.SymbolInformation | null = null;
 
         for (let i = 0; i < document.lineCount; i++) {
             const line = document.lineAt(i).text;
@@ -238,41 +259,77 @@ class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 
             // Si encontramos un encabezado estándar ('* ')
             if (match && match[1]) {
+                // Cierra la sección anterior
+                if (currentSymbol) {
+                    const end = new vscode.Position(i - 1, document.lineAt(i - 1).text.length);
+                    currentSymbol.location.range = new vscode.Range(
+                        currentSymbol.location.range.start,
+                        end
+                    );
+                }
+
                 inPestPlusSection = false; // Finaliza cualquier bloque Pest++
                 const sectionName =
                     match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
 
                 const icon = emojiMap[sectionName] || "";
 
-                const symbol = new vscode.SymbolInformation(
+                currentSymbol = new vscode.SymbolInformation(
                     `${icon} ${sectionName}`,
                     vscode.SymbolKind.Field,
                     "",
-                    new vscode.Location(document.uri, new vscode.Range(i, 0, i, line.length))
+                    new vscode.Location(
+                        document.uri,
+                        new vscode.Range(i, 0, i, line.length)
+                    )
                 );
 
-                symbols.push(symbol);
+                symbols.push(currentSymbol);
             }
             // Si encontramos el inicio de un bloque '++'
             else if (line.trim().startsWith("++")) {
                 if (!inPestPlusSection) {
+                    if (currentSymbol) {
+                        const end = new vscode.Position(i - 1, document.lineAt(i - 1).text.length);
+                        currentSymbol.location.range = new vscode.Range(
+                            currentSymbol.location.range.start,
+                            end
+                        );
+                    }
+
                     inPestPlusSection = true;
 
-                    const symbol = new vscode.SymbolInformation(
+                    currentSymbol = new vscode.SymbolInformation(
                         "🌐 PEST++ section",
                         vscode.SymbolKind.Field,
                         "",
-                        new vscode.Location(document.uri, new vscode.Range(i, 0, i, line.length))
+                        new vscode.Location(
+                            document.uri,
+                            new vscode.Range(i, 0, i, line.length)
+                        )
                     );
 
-                    symbols.push(symbol);
+                    symbols.push(currentSymbol);
                 }
             }
+        }
+
+        // Cierra la última sección
+        if (currentSymbol) {
+            const end = new vscode.Position(
+                document.lineCount - 1,
+                document.lineAt(document.lineCount - 1).text.length
+            );
+            currentSymbol.location.range = new vscode.Range(
+                currentSymbol.location.range.start,
+                end
+            );
         }
 
         return symbols;
     }
 }
+
 
 //#endregion Document Symbol Provider
 // #region Validate type of the variable
@@ -383,7 +440,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // #endregion Folding provider for PEST control file
 
-    
     // #region Hover provider for control data and SVD sections
     const hoverProvider = vscode.languages.registerHoverProvider(
         { scheme: "file" },
@@ -752,6 +808,121 @@ export async function activate(context: vscode.ExtensionContext) {
             },
         }
     );
+
+
+    const hoverProviderRegularization = vscode.languages.registerHoverProvider(
+        { scheme: "file" },
+        {
+            provideHover(document, position) {
+                // Obtener todas las líneas del archivo
+                const lines = document.getText().split("\n");
+    
+                // Detectar las secciones que comienzan con *
+                const sections: { name: string; start: number; end: number }[] = [];
+                lines.forEach((line, index) => {
+                    const trimmedLine = line.trim();
+                    if (trimmedLine.startsWith("*")) {
+                        const nextSectionIndex = lines.findIndex(
+                            (l, i) => i > index && l.trim().startsWith("*")
+                        );
+                        sections.push({
+                            name: trimmedLine.substring(1).trim().toLowerCase(),
+                            start: index,
+                            end: nextSectionIndex !== -1 ? nextSectionIndex : lines.length, // Final hasta la siguiente sección o el final del archivo
+                        });
+                    }
+                });
+    
+                console.log("Secciones detectadas:", sections); // Depuración
+    
+                // Determinar la sección actual según la posición del cursor
+                const currentSection = sections.find(
+                    (section) =>
+                        position.line > section.start && position.line < section.end
+                );
+    
+                if (!currentSection) {
+                    console.log("No se encontró ninguna sección para esta línea."); // Depuración
+                    return null;
+                }
+    
+                console.log("Sección actual:", currentSection.name); // Depuración
+    
+                // Verificar si la sección es * Regularization
+                if (currentSection.name !== "regularization") {
+                    console.log("La sección actual no es Regularization."); // Depuración
+                    return null;
+                }
+    
+                // Obtener la línea actual
+                const line = document.lineAt(position.line).text.trim();
+                const values = line.split(/\s+/); // Dividir la línea en valores
+    
+                console.log("Valores detectados en la línea:", values); // Depuración
+    
+                // Obtener la palabra bajo el cursor
+                const wordRange = document.getWordRangeAtPosition(position, /[^\s]+/);
+                if (!wordRange) {
+                    console.log("No hay palabra bajo el cursor."); // Depuración
+                    return null;
+                }
+    
+                const word = document.getText(wordRange);
+                console.log("Palabra detectada:", word); // Depuración
+    
+                // Mapear las variables de la línea con los valores
+                const lineIndex = position.line - currentSection.start - 1; // Índice relativo de la línea
+                const lineStructure = regularizationDataStructure[lineIndex];
+    
+                if (!lineStructure) {
+                    console.log("La línea actual no tiene una estructura definida."); // Depuración
+                    return null;
+                }
+    
+                // Buscar la posición del valor bajo el cursor en la línea
+                const valueIndex = values.findIndex((v) => v === word);
+                if (valueIndex === -1) {
+                    console.log("El valor detectado no está en la línea actual."); // Depuración
+                    return null;
+                }
+    
+                const variable = lineStructure[valueIndex];
+                if (!variable) {
+                    console.log("No se encontró una variable para este valor."); // Depuración
+                    return null;
+                }
+    
+                // Buscar descripción en la lista de descripciones
+                const descriptionData = descriptions.find(
+                    (desc) => desc.Variable === variable.name
+                );
+    
+                const description = descriptionData
+                    ? descriptionData.Description
+                    : "No description available";
+    
+                // Construir el contenido del hover
+                const hoverContent = new vscode.MarkdownString(
+                    `### Variable: **${variable.name}**\n\n` +
+                    `- **Description:** ${description}\n` +
+                    `- **Type:** \`${variable.type}\`\n` +
+                    `- **Required:** ${variable.required ? "Yes" : "No"}`
+                );
+    
+                return new vscode.Hover(hoverContent);
+            },
+        }
+    );
+    
+    
+    context.subscriptions.push(hoverProviderRegularization);
+    // Escucha cambios en el editor activo
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+        if (editor) {
+            //  applyDecorations(editor);
+        }
+    });
+    
 
     //#endregion Hover provider for control data and SVD sections
 
@@ -1197,6 +1368,111 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // #endregion Parameter Groups CodeLens and Hover
 
+    // #region Prior Information CodeLens and Hover
+    function parsePriorInformation(document: vscode.TextDocument) {
+        const headers = ["PILBL", "PIFAC", "PARNME", "PIVAL", "WEIGHT", "OBGNME"];
+
+        const lines = document.getText().split("\n");
+        const allRanges: { range: vscode.Range; header: string }[] = [];
+        let inPriorInformation = false;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const trimmedLine = line.trim();
+
+            // Detectar la sección "* observation data"
+            if (trimmedLine.startsWith("* prior information")) {
+                inPriorInformation = true;
+                continue;
+            }
+
+            // Procesar todas las líneas de datos dentro de "* observation data"
+            if (inPriorInformation) {
+                if (trimmedLine.startsWith("*")) {
+                    inPriorInformation = false;
+                    continue;
+                }
+
+                // Encuentra las posiciones de todas las palabras en la línea
+                const columnPositions = Array.from(line.matchAll(/\S+/g)); // Encuentra palabras y sus posiciones
+                const words = trimmedLine.split(/\s+/); // Palabras visibles
+
+                words.forEach((word, index) => {
+                    // Mapea la palabra al índice correcto
+                    if (headers[index] && columnPositions[index]) {
+                        const startIndex = columnPositions[index].index!;
+                        const endIndex = startIndex + word.length;
+
+                        const wordRange = new vscode.Range(
+                            new vscode.Position(i, startIndex),
+                            new vscode.Position(i, endIndex)
+                        );
+
+                        allRanges.push({ range: wordRange, header: headers[index] });
+                    }
+                });
+            }
+        }
+
+        return allRanges; // Retornar todos los rangos y headers asociados
+    }
+
+    const PriorInformationHoverProvider = vscode.languages.registerHoverProvider(
+        { scheme: "file", pattern: "**/*.{pst,pest}" },
+        {
+            provideHover(document, position): vscode.ProviderResult<vscode.Hover> {
+                const ranges = parsePriorInformation(document);
+
+                for (const { range, header } of ranges) {
+                    if (range.contains(position)) {
+                        return new vscode.Hover(new vscode.MarkdownString(`${header}`));
+                    }
+                }
+
+                return null; // Asegura que se devuelve un valor en todos los caminos
+            },
+        }
+    );
+
+    // Nueva función para obtener solo los rangos de la primera línea
+    function getFirstRowRangesPriorInformation(document: vscode.TextDocument) {
+        const allRanges = parsePriorInformation(document);
+        const firstLineRanges = allRanges.filter(
+            ({ range }) => range.start.line === allRanges[0]?.range.start.line
+        );
+        return firstLineRanges;
+    }
+
+    const PriorInformationCodeLensProvider = vscode.languages.registerCodeLensProvider(
+        { scheme: "file", pattern: "**/*.{pst,pest}" },
+        {
+            provideCodeLenses(document) {
+                const codeLenses: vscode.CodeLens[] = [];
+                const firstRowRanges = getFirstRowRangesPriorInformation(document);
+
+                if (firstRowRanges.length > 0) {
+                    firstRowRanges.forEach(({ range, header }) => {
+                        const description =
+                            descriptions.find((desc) => desc.Variable === header)
+                                ?.Description || "No description available";
+                        codeLenses.push(
+                            new vscode.CodeLens(range, {
+                                title: header,
+                                command: "", // Si no necesitas que haga nada al clic, deja el comando vacío.
+                                tooltip: `${header} : ${description}`, // Tooltip para cada header.
+                            })
+                        );
+                    });
+                }
+
+                return codeLenses;
+            },
+        }
+    );
+
+    // #endregion Parameter Groups CodeLens and Hover
+
+
     // #region CodeLens provider for command line and input/output sections
 
     const codeLensProvider = vscode.languages.registerCodeLensProvider(
@@ -1352,6 +1628,11 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(obsGroupsHoverProvider);
     context.subscriptions.push(obsDataCodeLensProvider);
     context.subscriptions.push(obsDataHoverProvider);
+    context.subscriptions.push(PriorInformationCodeLensProvider);
+    context.subscriptions.push(PriorInformationHoverProvider);
+    //context.subscriptions.push(RegularizationCodeLensProvider);
+    //context.subscriptions.push(RegularizationHoverProvider);
+    //context.subscriptions.push(hoverProviderRegularization);
 }
 //#endregion Extension activation
 
