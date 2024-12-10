@@ -60,7 +60,7 @@ The **most important feature** of this extension is that it works **WITHOUT** mo
 
 ## Features Demonstration
 
-### 1. Folding Sections,colors and Hover over Control Data, SVD, etc.
+### 1. Folding sections, color coding, and hover tooltips for Control Data, SVD, etc.
 ![Folding sections and hovers](media/video_1.gif)
 
 ### 2. Clickable links to files in model command lines and input/output sections
@@ -90,7 +90,7 @@ This extension does not yet provide configurable settings. Future releases may i
 
 - Some variables with highly customized formats may not display correct hover information.
 - Workspace activation might fail if .pst or .pest files are deeply nested.
-- Inconsistencies remain in handling the **Control Data** section (absparmax, uptestmin, etc), particularly with optional values (in progress).
+- Inconsistencies remain in handling the **Control Data** section (in progress).
 al release of PestD3code.
 
 ## Following Extension Guidelines
