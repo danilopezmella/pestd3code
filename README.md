@@ -5,7 +5,17 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)
 
-Welcome to **PestD3code**, a VS Code extension designed to enhance the readability and usability of PEST control files for MODFLOW. This extension helps users by adding structured decorators and hover support for better interpretation and editing of .pst and .pest files.
+# Welcome to **PestD3code**
+
+**PestD3code** is a VS Code extension designed to enhance the readability and usability of PEST control files for MODFLOW. This extension provides structured decorators and hover support to make the interpretation and editing of `.pst` and `.pest` files easier and more intuitive.
+
+---
+
+### 🚨 **IMPORTANT NOTE** 🚨
+
+The **most important feature** of this extension is that it works **WITHOUT** modifying your `.pst` file. It functions as a seamless decorator, ensuring that your original file remains untouched. You can confidently explore and interact with your `.pst` file, knowing it stays completely safe.
+
+---
 
 ## Features
 
@@ -50,8 +60,8 @@ Welcome to **PestD3code**, a VS Code extension designed to enhance the readabili
 
 ## Features Demonstration
 
-### 1. Folding Sections and Colors
-![Folding sections and colors](media/video_1.gif)
+### 1. Folding Sections,colors and Hover over Control Data, SVD, etc.
+![Folding sections and hovers](media/video_1.gif)
 
 ### 2. Clickable links to files in model command lines and input/output sections
 ![Quick access to files in model command line and model input output](media/video_2.gif)
@@ -80,7 +90,7 @@ This extension does not yet provide configurable settings. Future releases may i
 
 - Some variables with highly customized formats may not display correct hover information.
 - Workspace activation might fail if .pst or .pest files are deeply nested.
-- Inconsistencies remain in handling the **Control Data** section, particularly with optional values (in progress).
+- Inconsistencies remain in handling the **Control Data** section (absparmax, uptestmin, etc), particularly with optional values (in progress).
 al release of PestD3code.
 
 ## Following Extension Guidelines

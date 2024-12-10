@@ -2,7 +2,14 @@
 
 ### 0.0.5
 
-- Minor changes.
+- **Updated README.md**:
+  - Highlighted that the extension works **WITHOUT** modifying `.pst` files, emphasizing its seamless decorator functionality.
+  - Enhanced description of the extension's purpose and features for improved clarity.
+  - Added animated GIFs to illustrate functionality in the `README.md`.
+- **Enhanced Language Support**:
+  - Now includes both spellings: **Regularization** and **Regularisation** for broader compatibility.
+
+---
 
 ### 0.0.4
 

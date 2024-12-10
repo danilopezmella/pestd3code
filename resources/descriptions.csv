@@ -1,6 +1,6 @@
 controlid,itemid,Parent,Variable,Type,Values,Description,Line,Position,Mandatory,,,,,
 1,1,control data,RSTFLE,text,“restart” or “norestart”,instructs PEST whether to write restart data,1,1,required,,,,,
-2,2,control data,PESTMODE,text,“estimation”, “prediction”, “regularization”, “pareto”,PEST’s mode of operation,1,2,required,,
+2,2,control data,PESTMODE,text,“estimation prediction regularization pareto”,PEST’s mode of operation,1,2,required,,
 3,3,control data,NPAR,integer,greater than zero,number of parameters,2,1,required,,,,,
 4,4,control data,NOBS,integer,greater than zero,number of observations,2,2,required,,,,,
 5,5,control data,NPARGP,integer,greater than zero,number of parameter groups,2,3,required,,,,,
