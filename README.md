@@ -47,6 +47,18 @@ Welcome to **PestD3code**, a VS Code extension designed to enhance the readabili
 - **Hover Tooltips for Pest++ Attributes:**
   - Hover over Pest++ attributes to see code for each variable and description.
 
+
+## Features Demonstration
+
+### 1. Folding Sections and Colors
+![Folding sections and colors](media/video_1.gif)
+
+### 2. Clickable links to files in model command lines and input/output sections
+![Quick access to files in model command line and model input output](media/video_2.gif)
+
+### 3. Embedded PEST++ manual for instant access and interactive table of contents
+![Manual and PEST++ variable and table of contents](media/video_3.gif)
+
 ## Requirements
 
 - **Visual Studio Code:** Version 1.95.0 or later.
