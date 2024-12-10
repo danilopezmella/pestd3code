@@ -91,7 +91,7 @@ This extension does not yet provide configurable settings. Future releases may i
 - Some variables with highly customized formats may not display correct hover information.
 - Workspace activation might fail if .pst or .pest files are deeply nested.
 - Inconsistencies remain in handling the **Control Data** section (in progress).
-
+1
 ## Following Extension Guidelines
 
 This extension adheres to the best practices outlined in the Visual Studio Code Extension Guidelines.
