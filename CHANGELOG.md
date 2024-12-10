@@ -1,5 +1,9 @@
 # Change Log
 
+### 0.0.5
+
+- Minor changes.
+
 ### 0.0.4
 
 - Added support for **Prior Information** section with appropriate emoji.
