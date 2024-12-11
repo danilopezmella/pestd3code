@@ -61,13 +61,13 @@ The **most important feature** of this extension is that it works **WITHOUT** mo
 ## Features Demonstration
 
 ### 1. Folding sections, color coding, and hover tooltips for Control Data, SVD, etc.
-![Folding sections and hovers](media/video_1.gif)
+<img src="media/video_1.gif" alt="Folding sections and colors" width="432">
 
 ### 2. Clickable links to files in model command lines and input/output sections
-![Quick access to files in model command line and model input output](media/video_2.gif)
+<img src="media/video_2.gif" alt="Hover and quick access to sections" width="432">
 
 ### 3. Embedded PEST++ manual for instant access and interactive table of contents
-![Manual and PEST++ variable and table of contents](media/video_3.gif)
+<img src="media/video_3.gif" alt="Manual and PEST++ variable hover and detection" width="432">
 
 ## Requirements
 
