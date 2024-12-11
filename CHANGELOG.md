@@ -8,6 +8,8 @@
   - Added animated GIFs to illustrate functionality in the `README.md`.
 - **Enhanced Language Support**:
   - Now includes both spellings: **Regularization** and **Regularisation** for broader compatibility.
+- **Prior Information Hover Enhancements**:
+  - Improved hover descriptions to avoid using `*` and `=` characters for better readability.
 
 ---
 

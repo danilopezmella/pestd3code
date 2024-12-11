@@ -1390,68 +1390,72 @@ export async function activate(context: vscode.ExtensionContext) {
   // #region Prior Information CodeLens and Hover
   function parsePriorInformation(document: vscode.TextDocument) {
     const headers = ["PILBL", "PIFAC", "PARNME", "PIVAL", "WEIGHT", "OBGNME"];
-
+  
     const lines = document.getText().split("\n");
     const allRanges: { range: vscode.Range; header: string }[] = [];
     let inPriorInformation = false;
-
+  
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const trimmedLine = line.trim();
-
-      // Detectar la sección "* observation data"
+  
+      // Detectar la sección "* prior information"
       if (trimmedLine.startsWith("* prior information")) {
         inPriorInformation = true;
         continue;
       }
-
-      // Procesar todas las líneas de datos dentro de "* observation data"
+  
+      // Procesar todas las líneas de datos dentro de "* prior information"
       if (inPriorInformation) {
         if (trimmedLine.startsWith("*")) {
           inPriorInformation = false;
           continue;
         }
-
-        // Encuentra las posiciones de todas las palabras en la línea
-        const columnPositions = Array.from(line.matchAll(/\S+/g)); // Encuentra palabras y sus posiciones
-        const words = trimmedLine.split(/\s+/); // Palabras visibles
-
-        words.forEach((word, index) => {
-          // Mapea la palabra al índice correcto
-          if (headers[index] && columnPositions[index]) {
-            const startIndex = columnPositions[index].index!;
-            const endIndex = startIndex + word.length;
-
+  
+        // Encuentra las posiciones de palabras relevantes en la línea
+        const columnMatches = Array.from(
+          line.matchAll(/[a-zA-Z0-9_.]+/g) // Capturar solo palabras relevantes
+        );
+  
+        columnMatches.forEach((match, index) => {
+          const word = match[0];
+          const startIndex = match.index!;
+          const endIndex = startIndex + word.length;
+  
+          // Asociar con un header solo si el índice es válido
+          if (headers[index]) {
             const wordRange = new vscode.Range(
               new vscode.Position(i, startIndex),
               new vscode.Position(i, endIndex)
             );
-
+  
             allRanges.push({ range: wordRange, header: headers[index] });
           }
         });
       }
     }
-
+  
     return allRanges; // Retornar todos los rangos y headers asociados
   }
-
+  
   const PriorInformationHoverProvider = vscode.languages.registerHoverProvider(
     { scheme: "file", pattern: "**/*.{pst,pest}" },
     {
       provideHover(document, position): vscode.ProviderResult<vscode.Hover> {
         const ranges = parsePriorInformation(document);
-
+  
         for (const { range, header } of ranges) {
           if (range.contains(position)) {
             return new vscode.Hover(new vscode.MarkdownString(`${header}`));
           }
         }
-
+  
         return null; // Asegura que se devuelve un valor en todos los caminos
       },
     }
   );
+  
+  
 
   // Nueva función para obtener solo los rangos de la primera línea
   function getFirstRowRangesPriorInformation(document: vscode.TextDocument) {
