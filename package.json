@@ -17,7 +17,8 @@
   },
   "activationEvents": [
     "workspaceContains:**/*.{pst,pest}",
-    "onLanguage:pestlang"
+    "onLanguage:pestlang",
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -27,6 +28,25 @@
         "editor.guides.indentation": true
       }
     },
+    "configuration": {
+      "type": "object",
+      "title": "PestD3code Settings",
+      "properties": {
+          "pestd3code.pestcheckPath": {
+              "type": "string",
+              "default": "",
+              "description": "Path to the pestchek.exe executable. Use the 'Set PestCheck Path' command to browse for the file."
+          },
+          "pestd3code.runFrequency": {
+              "type": "number",
+              "default": 60,
+              "description": "Frequency (in seconds) to automatically run pestchek.exe on the active .pst file."
+          }
+      }
+  }
+
+
+     ,
     "commands": [
       {
         "command": "pestd3code.activate",
@@ -35,7 +55,23 @@
       {
         "command": "extension.openManual",
         "title": "Open PEST++ Manual"
-      }
+      },
+      {
+        "command": "pestd3code.autoSetPestCheckPath",
+        "title": "Auto-Set PestCheck Path",
+        "category": "PestD3code"
+    },
+    {
+        "command": "pestd3code.findPestCheck",
+        "title": "Find PestCheck Executable",
+        "category": "PestD3code"
+    },
+    {
+      "command": "pestd3code.setPestcheckPath",
+      "title": "Set PestCheck Path Manually",
+      "category": "PestD3code"
+  }
+      
     ],
     "languages": [
       {

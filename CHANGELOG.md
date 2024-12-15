@@ -1,5 +1,14 @@
 # Change Log
 
+### 0.0.6
+
+- **Pestchek Search Integration**:
+  - Added initial groundwork for future integration of `pestchek` search functionality to enhance file validation and error checking.
+- **Quick Access Links**:
+  - Added links to files in `.bat` files for quick access to open files in a new window.
+- **Identify External Change**:
+  - Implemented a feature to detect external changes in `.pst` and  `.pest` files and notify the user.
+
 ### 0.0.5
 
 - **Updated README.md**:
@@ -8,7 +17,10 @@
   - Added animated GIFs to illustrate functionality in the `README.md`.
 - **Enhanced Language Support**:
   - Now includes both spellings: **Regularization** and **Regularisation** for broader compatibility.
-
+  - **Prior Information Improvement**:
+    - Removed asterisks (*) and equal signs (=) for cleaner formatting and better readability.
+  - **Identify External Change**:
+    - Implemented a feature to detect external changes in `.pst` files and notify the user.
 ---
 
 ### 0.0.4

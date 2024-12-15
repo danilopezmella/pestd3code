@@ -2,6 +2,8 @@ import * as vscode from "vscode";
 import * as fs from "fs";
 import { parse } from "csv-parse/sync";
 import * as path from "path";
+import { exec } from 'child_process';
+import * as os from 'os';
 
 type DescriptionData = {
   controlid: string;
@@ -364,8 +366,331 @@ function validateType(
   return typeof value === "string";
 }
 // #endregion Validate type of the variable
+
+
+
+
+async function findPestCheckUsingCMD(): Promise<string | null> {
+  console.log('Trying to find pestchek.exe using cmd /c where...');
+  return new Promise((resolve) => {
+      exec('cmd /c where pestchek', (error, stdout, stderr) => {
+          if (error || stderr) {
+              console.log('Error or stderr from where command:', error, stderr);
+              resolve(null);
+          } else {
+              const paths = stdout.split('\n').map(line => line.trim()).filter(line => line);
+              if (paths.length > 0) {
+                  console.log('Found pestchek.exe using cmd /c where:', paths[0]);
+                  resolve(paths[0]);
+              } else {
+                  resolve(null);
+              }
+          }
+      });
+  });
+}
+
+
+// Detectar pestchek.exe usando Get-Command (PowerShell)
+async function findPestCheckUsingPowerShell(): Promise<string | null> {
+  console.log('Trying to find pestchek.exe using PowerShell Get-Command...');
+  return new Promise((resolve) => {
+      exec(
+          'powershell -Command "Get-Command pestchek.exe | Select-Object -ExpandProperty Source"',
+          (error, stdout, stderr) => {
+              if (error || stderr) {
+                  console.log('Error or stderr from PowerShell Get-Command:', error, stderr);
+                  resolve(null);
+              } else {
+                  const path = stdout.trim();
+                  if (path) {
+                      console.log('Found pestchek.exe using PowerShell Get-Command:', path);
+                      resolve(path);
+                  } else {
+                    console.log('Not Found pestchek.exe using PowerShell Get-Command:', path);
+                      resolve(null);
+                  }
+              }
+          }
+      );
+  });
+}
+
+// find pest check para unix y mac
+async function findPestCheckUsingMac(): Promise<string | null> {
+  console.log('Trying to find pestchek using which...');
+  return new Promise((resolve) => {
+      exec('which pestchek', (error, stdout, stderr) => {
+          if (error || stderr) {
+              console.log('Error or stderr from which command:', error, stderr);
+              resolve(null);
+          } else {
+              const path = stdout.trim();
+              if (path) {
+                  console.log('Found pestchek using which:', path);
+                  resolve(path);
+              } else {
+                  resolve(null);
+              }
+          }
+      });
+  });
+}
+
+
+function getCommonPaths(): string[] {
+  const platform = process.platform;
+
+  if (platform === 'win32') {
+      // Rutas específicas para Windows
+      return [
+          path.join('C:', 'Program Files', 'Pest', 'pestchek.exe'),
+          path.join('C:', 'Program Files (x86)', 'Pest', 'pestchek.exe'),
+          path.join(process.env['USERPROFILE'] || '', 'Pest', 'pestchek.exe'),
+          ...[5, 6, 7, 8, 9].map(num => path.join('C:', `gwv${num}`, 'pestchek.exe'))
+      ];
+  } else if (platform === 'darwin') {
+      // Rutas específicas para macOS
+      return [
+          path.join('/Applications', 'Pest', 'pestchek'),
+          path.join(os.homedir(), 'Pest', 'pestchek'),
+          path.join('/usr/local/bin', 'pestchek'),
+          ...[5, 6, 7, 8, 9].map(num => path.join('/gwv', `gwv${num}`, 'pestchek'))
+      ];
+  } else if (platform === 'linux') {
+      // Rutas específicas para Linux
+      return [
+          path.join('/usr/local/bin', 'pestchek'),
+          path.join(os.homedir(), 'Pest', 'pestchek'),
+          path.join('/opt', 'Pest', 'pestchek'),
+          ...[5, 6, 7, 8, 9].map(num => path.join('/gwv', `gwv${num}`, 'pestchek'))
+      ];
+  } else {
+      console.warn(`Unsupported platform: ${platform}`);
+      return [];
+  }
+}
+
+
+async function findPestCheckInCommonPaths(): Promise<string | null> {
+  const commonPaths = getCommonPaths();
+  console.log('Checking common paths:', commonPaths);
+
+  for (const commonPath of commonPaths) {
+      if (fs.existsSync(commonPath)) {
+          console.log(`PestCheck found at: ${commonPath}`);
+          const userChoice = await vscode.window.showInformationMessage(
+              `PestCheck executable found at: ${commonPath}. Do you want to use this path?`,
+              'Yes',
+              'No'
+          );
+          if (userChoice === 'Yes') {
+              return commonPath;
+          }
+      }
+  }
+
+  return null;
+}
+
+
+// Función principal para buscar pestchek.exe
+async function findPestCheck(): Promise<string | null> {
+  console.log('Starting PestCheck search...');
+
+  // 1. Intentar con cmd /c where
+  const pathFromCMD = await findPestCheckUsingCMD();
+  if (pathFromCMD) {
+      vscode.window.showInformationMessage(`PestCheck found using CMD: ${pathFromCMD}`);
+      console.log('Found via CMD:', pathFromCMD);
+      return pathFromCMD;
+  }
+
+  // 2. Intentar con PowerShell Get-Command
+  const pathFromPowerShell = await findPestCheckUsingPowerShell();
+  if (pathFromPowerShell) {
+      vscode.window.showInformationMessage(`PestCheck found using PowerShell: ${pathFromPowerShell}`);
+      console.log('Found via PowerShell:', pathFromPowerShell);
+      return pathFromPowerShell;
+  }
+
+  // 3. Intentar con rutas comunes
+  const pathFromCommonPaths = await findPestCheckInCommonPaths();
+  if (pathFromCommonPaths) {
+      vscode.window.showInformationMessage(`PestCheck found in common paths: ${pathFromCommonPaths}`);
+      console.log('Found in common paths:', pathFromCommonPaths);
+      return pathFromCommonPaths;
+  }
+
+  // 4. Intentar con which en macOS y Linux
+  const pathFromMac = await findPestCheckUsingMac();
+  if (pathFromMac) {
+      vscode.window.showInformationMessage(`PestCheck found using which: ${pathFromMac}`);
+      console.log('Found via which:', pathFromMac);
+      return pathFromMac;
+  }
+
+  // No encontrado
+  const warningMessage = 'PestCheck executable not found using any method. Please configure it manually.';
+  vscode.window.showWarningMessage(warningMessage);
+  console.log(warningMessage);
+  return null;
+}
+
+
+
+async function autoSetPestCheckPath() {
+
+
+  const commonPaths = getCommonPaths();
+
+console.log('Common paths to check:', commonPaths);
+  
+// print console log
+  console.log('Common paths to check:', commonPaths);
+  
+
+  for (const path of commonPaths) {
+      if (fs.existsSync(path)) {
+          await vscode.workspace.getConfiguration('pestd3code').update(
+              'pestcheckPath',
+              path,
+              vscode.ConfigurationTarget.Global
+          );
+
+          vscode.window.showInformationMessage(`PestCheck path automatically set to: ${path}`);
+          return;
+      }
+  }
+
+  vscode.window.showWarningMessage(
+      'PestCheck executable not found in common paths. Please use the "Set PestCheck Path" command to configure it.'
+  );
+}
+
+
+
+
+
 //#region Extension activation
-export async function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
+
+
+  
+
+  async function browseForPestCheckPath(_context: vscode.ExtensionContext) {
+    console.log('Opening file dialog for manual PestCheck path selection...');
+    const selectedFile = await vscode.window.showOpenDialog({
+        canSelectFiles: true,
+        canSelectFolders: false,
+        canSelectMany: false,
+        filters: { Executables: ['exe'] },
+        openLabel: 'Select PestCheck Executable'
+    });
+
+    if (selectedFile && selectedFile[0]) {
+        const pestcheckPath = selectedFile[0].fsPath;
+        console.log('User selected PestCheck path:', pestcheckPath);
+
+        await vscode.workspace.getConfiguration('pestd3code').update(
+            'pestcheckPath',
+            pestcheckPath,
+            vscode.ConfigurationTarget.Global
+        );
+        vscode.window.showInformationMessage(`PestCheck path set to: ${pestcheckPath}`);
+    } else {
+        console.log('No file selected by user.');
+        vscode.window.showWarningMessage('No file selected.');
+    }
+}
+
+
+
+  vscode.commands.registerCommand('pestd3code.setPestcheckPath', browseForPestCheckPath);
+  context.subscriptions.push(
+    vscode.commands.registerCommand('pestd3code.autoSetPestCheckPath', autoSetPestCheckPath),
+    vscode.commands.registerCommand('pestd3code.findPestCheck', async () => {
+        const pestCheckPath = await findPestCheck();
+        if (!pestCheckPath) {
+            vscode.window.showWarningMessage(
+                'PestCheck executable not found. Would you like to set it manually?',
+                'Browse'
+            ).then(selection => {
+                if (selection === 'Browse') {
+                    browseForPestCheckPath(context);
+                }
+            });
+        }
+    }),
+);
+
+
+
+console.log('Commands registered: autoSetPestCheckPath, findPestCheck');
+
+
+console.log('Activating PestD3code extension...');
+
+const configuration = vscode.workspace.getConfiguration('pestd3code');
+let pestcheckPath = configuration.get<string>('pestcheckPath', '');
+
+const alreadyNotified = context.globalState.get<boolean>('pestCheckNotified', false);
+
+if (!pestcheckPath || !fs.existsSync(pestcheckPath)) {
+    console.log('PestCheck path not configured or does not exist.');
+
+    if (!alreadyNotified) {
+        console.log('Notifying user about missing PestCheck configuration...');
+        await notifyPestCheckNotFound(context);
+        await context.globalState.update('pestCheckNotified', true); // Marcar como notificado
+    } else {
+        console.log('User has already been notified about missing PestCheck.');
+    }
+} else {
+    console.log('PestCheck is already configured at:', pestcheckPath);
+    vscode.window.showInformationMessage(`PestCheck is already configured at: ${pestcheckPath}`);
+}
+
+context.subscriptions.push(
+  vscode.commands.registerCommand('pestd3code.resetNotification', () => resetPestCheckNotification(context))
+);
+
+async function notifyPestCheckNotFound(context: vscode.ExtensionContext) {
+  const selected = await vscode.window.showWarningMessage(
+      'PestCheck executable not found. Configure it now?',
+      'Browse',
+      'Skip'
+  );
+
+  if (selected === 'Browse') {
+      await browseForPestCheckPath(context);
+  } else {
+      console.log('User chose to skip PestCheck configuration.');
+  }
+}
+
+async function resetPestCheckNotification(context: vscode.ExtensionContext) {
+  await context.globalState.update('pestCheckNotified', false);
+  vscode.window.showInformationMessage('PestCheck notification reset. You will be notified again if needed.');
+}
+/* async function handlePestCheckNotFound() {
+  const selected = await vscode.window.showErrorMessage(
+      'PestCheck executable not found in PATH. What do you want to do?',
+      { modal: true }, // Hace el mensaje más prominente
+      'Skip', // Opción para omitir
+      'Browse' // Opción para buscar manualmente
+  );
+
+  if (selected === 'Browse') {
+      await browseForPestCheckPath();
+  } else if (selected === 'Skip') {
+      console.log('User chose to skip PestCheck configuration.');
+  }
+} */
+
+
+
+
   await loadDescriptions(context);
 
   context.subscriptions.push(
@@ -374,6 +699,55 @@ export async function activate(context: vscode.ExtensionContext) {
       new PestDocumentSymbolProvider()
     )
   );
+
+
+  const fileModificationTimes: Map<string, number> = new Map();
+
+  // Watch for changes to all .pst files in the workspace
+  const fileWatcher = vscode.workspace.createFileSystemWatcher("**/*.pst");
+
+  // Triggered when a file is modified
+  fileWatcher.onDidChange((uri) => {
+    const filePath = uri.fsPath;
+
+    // Check the last modified time of the file
+    fs.stat(filePath, (err, stats) => {
+      if (err) {
+        console.error(`Error reading file stats: ${err.message}`);
+        return;
+      }
+
+      const lastModified = stats.mtimeMs; // Last modification time in milliseconds
+
+      // Check if the modification is external (not in VS Code)
+      if (!fileModificationTimes.has(filePath) || fileModificationTimes.get(filePath) !== lastModified) {
+        fileModificationTimes.set(filePath, lastModified); // Update the tracked modification time
+
+        // Notify the user and offer to reload the file
+        vscode.window
+          .showWarningMessage(
+            `The file "${filePath}" has been modified outside of VS Code. Would you like to reload it?`,
+            "Reload"
+          )
+          .then((selection) => {
+            if (selection === "Reload") {
+              vscode.workspace.openTextDocument(uri).then((doc) => {
+                vscode.window.showTextDocument(doc);
+              });
+            }
+          });
+      }
+    });
+  });
+
+  // Update modification time when the file is saved in VS Code
+  vscode.workspace.onDidSaveTextDocument((document) => {
+    if (document.fileName.endsWith(".pst")) {
+      const stats = fs.statSync(document.fileName);
+      fileModificationTimes.set(document.fileName, stats.mtimeMs);
+    }
+  });
+  context.subscriptions.push(fileWatcher);
 
   // #region CodeLens provider for manual
   const manualCodeLensProvider = vscode.languages.registerCodeLensProvider(
@@ -1390,68 +1764,74 @@ export async function activate(context: vscode.ExtensionContext) {
   // #region Prior Information CodeLens and Hover
   function parsePriorInformation(document: vscode.TextDocument) {
     const headers = ["PILBL", "PIFAC", "PARNME", "PIVAL", "WEIGHT", "OBGNME"];
-
+  
     const lines = document.getText().split("\n");
     const allRanges: { range: vscode.Range; header: string }[] = [];
     let inPriorInformation = false;
-
+  
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const trimmedLine = line.trim();
-
-      // Detectar la sección "* observation data"
+  
+      // Detectar la sección "* prior information"
       if (trimmedLine.startsWith("* prior information")) {
         inPriorInformation = true;
         continue;
       }
-
-      // Procesar todas las líneas de datos dentro de "* observation data"
+  
+      // Procesar todas las líneas de datos dentro de "* prior information"
       if (inPriorInformation) {
         if (trimmedLine.startsWith("*")) {
           inPriorInformation = false;
           continue;
         }
-
-        // Encuentra las posiciones de todas las palabras en la línea
-        const columnPositions = Array.from(line.matchAll(/\S+/g)); // Encuentra palabras y sus posiciones
-        const words = trimmedLine.split(/\s+/); // Palabras visibles
-
-        words.forEach((word, index) => {
-          // Mapea la palabra al índice correcto
-          if (headers[index] && columnPositions[index]) {
-            const startIndex = columnPositions[index].index!;
-            const endIndex = startIndex + word.length;
-
+  
+        // Filtrar palabras relevantes excluyendo operadores como "*", "log"
+        const columnMatches = Array.from(
+          line.matchAll(/[a-zA-Z0-9_.]+/g) // Capturar solo palabras relevantes
+        ).filter((match) => !["*", "log"].includes(match[0]));
+  
+        // Validar palabras y asociarlas con encabezados
+        let headerIndex = 0;
+        columnMatches.forEach((match) => {
+          const word = match[0];
+          const startIndex = match.index!;
+          const endIndex = startIndex + word.length;
+  
+          // Asociar solo si hay un encabezado disponible
+          if (headers[headerIndex]) {
             const wordRange = new vscode.Range(
               new vscode.Position(i, startIndex),
               new vscode.Position(i, endIndex)
             );
-
-            allRanges.push({ range: wordRange, header: headers[index] });
+  
+            allRanges.push({ range: wordRange, header: headers[headerIndex] });
+            headerIndex++; // Avanzar al siguiente encabezado
           }
         });
       }
     }
-
+  
     return allRanges; // Retornar todos los rangos y headers asociados
   }
-
+  
   const PriorInformationHoverProvider = vscode.languages.registerHoverProvider(
     { scheme: "file", pattern: "**/*.{pst,pest}" },
     {
       provideHover(document, position): vscode.ProviderResult<vscode.Hover> {
         const ranges = parsePriorInformation(document);
-
+  
         for (const { range, header } of ranges) {
           if (range.contains(position)) {
             return new vscode.Hover(new vscode.MarkdownString(`${header}`));
           }
         }
-
+  
         return null; // Asegura que se devuelve un valor en todos los caminos
       },
     }
   );
+  
 
   // Nueva función para obtener solo los rangos de la primera línea
   function getFirstRowRangesPriorInformation(document: vscode.TextDocument) {
@@ -1576,6 +1956,156 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     }
   );
+
+
+
+ 
+  
+  function resolvePath(baseDir: string, pathCommand: string): string {
+
+  /**
+   * Resolves a given path command to an absolute path based on the provided base directory.
+   *
+   * This function handles different types of paths:
+   * - Windows absolute paths (e.g., `C:\absolute\path`)
+   * - macOS/Linux absolute paths (e.g., `/absolute/path`)
+   * - Relative paths with `%~dp0` notation
+   * - Standard relative paths
+   *
+   * @param baseDir - The base directory to resolve relative paths against.
+   * @param pathCommand - The path command to resolve. It can be an absolute path, a relative path, or a path with `%~dp0` notation.
+   * @returns The resolved absolute path.
+   */
+
+    // Windows absolute paths (e.g., C:\absolute\path)
+    if (path.isAbsolute(pathCommand) && /^[a-zA-Z]:\\/.test(pathCommand)) {
+      return path.normalize(pathCommand);
+    }
+  
+    // macOS/Linux absolute paths (e.g., /absolute/path)
+    if (path.isAbsolute(pathCommand) && pathCommand.startsWith("/")) {
+      return path.normalize(pathCommand);
+    }
+  
+    // Handle `%~dp0` for relative paths
+    if (pathCommand.startsWith("%~dp0")) {
+      const relativePath = pathCommand.replace("%~dp0", "").trim();
+      const levelsUp = (relativePath.match(/\.\.\//g) || []).length; // Count `..`
+      const cleanedPath = relativePath.replace(/\.\.\//g, "").replace(/\\/g, "/");
+  
+      let resolvedBaseDir = baseDir;
+      for (let i = 0; i < levelsUp; i++) {
+        resolvedBaseDir = path.dirname(resolvedBaseDir);
+      }
+  
+      return path.resolve(resolvedBaseDir, cleanedPath);
+    }
+  
+    // If it's a relative path without `%~dp0`
+    return path.resolve(baseDir, pathCommand);
+  }
+  
+
+
+
+
+
+
+  const codeLensProviderbat = vscode.languages.registerCodeLensProvider(
+    { scheme: "file", pattern: "**/*.bat" },
+    {
+      provideCodeLenses(document) {
+        const codeLenses: vscode.CodeLens[] = [];
+        const lines = document.getText().split("\n");
+        let currentDir = path.dirname(document.uri.fsPath); // Start with the .bat file's directory
+  
+        lines.forEach((line, i) => {
+          const trimmedLine = line.trim();
+  
+          // Detect `cd` commands and update currentDir
+          const cdMatch = trimmedLine.match(/^cd\s+(.+)/i);
+          if (cdMatch) {
+            const pathCommand = cdMatch[1].trim(); // Extract the path after `cd`
+            const baseDir = path.dirname(document.uri.fsPath); // Directory of the .bat file
+  
+            // Resolve the path (handles absolute paths, `%~dp0`, etc.)
+            currentDir = resolvePath(baseDir, pathCommand);
+  
+            const range = new vscode.Range(i, 0, i, trimmedLine.length);
+  
+            // Add CodeLens for the `cd` command
+            codeLenses.push(
+              new vscode.CodeLens(range, {
+                title: `📂 Open Folder: ${currentDir}`,
+                command: "extension.openPath",
+                arguments: [currentDir],
+              })
+            );
+          }
+  
+          // Detect file references anywhere in the line
+          const fileMatches = [...trimmedLine.matchAll(/([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]+)/g)];
+          fileMatches.forEach((match) => {
+            const fileName = match[1]; // Extract the filename
+            const resolvedFilePath = path.resolve(currentDir, fileName); // Combine current directory with the filename
+  
+            const range = new vscode.Range(i, match.index || 0, i, (match.index || 0) + fileName.length);
+  
+            // Add CodeLens for the file reference
+            codeLenses.push(
+              new vscode.CodeLens(range, {
+                title: `📄 Open File: ${resolvedFilePath}`,
+                command: "extension.openFile",
+                arguments: [resolvedFilePath],
+              })
+            );
+          });
+        });
+  
+        return codeLenses;
+      },
+    }
+  );
+  
+
+  
+
+
+  
+  
+
+  // Command to open resolved paths (folders)
+  const openPathCommand = vscode.commands.registerCommand(
+    "extension.openPath",
+    async (resolvedPath: string) => {
+      try {
+        await vscode.env.openExternal(vscode.Uri.file(resolvedPath));
+      } catch {
+        vscode.window.showWarningMessage(`Folder not found: ${resolvedPath}`);
+      }
+    }
+  );
+
+// Command to open resolved files
+const openFileCommand = vscode.commands.registerCommand(
+  "extension.openFile",
+  async (filePath: string) => {
+    try {
+      // Open the file in a new editor tab beside the current one
+      const doc = await vscode.workspace.openTextDocument(filePath);
+      await vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside);
+    } catch {
+      vscode.window.showWarningMessage(`File not found: ${filePath}`);
+    }
+  }
+);
+
+context.subscriptions.push(
+  codeLensProviderbat,
+  openPathCommand,
+  openFileCommand
+);
+
 
   // #endregion CodeLens provider for command line and input/output sections
 
