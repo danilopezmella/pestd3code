@@ -2,8 +2,11 @@
 
 ### 0.0.6
 
-- **Pestchek Search Integration**:
-  - Added initial groundwork for future integration of `pestchek` search functionality to enhance file validation and error checking.
+- **Pestcheck Compatibility!**
+  - Now compatible with `Pestcheck` for enhanced validation and error checking.
+- **Pestcheck Path and Settings**:
+  - Added a field to specify the path for `Pestcheck` and its settings.
+  - Implemented auto-setup commands to locate `Pestcheck` in the system path and common directories.
 - **Quick Access Links**:
   - Added links to files in `.bat` files for quick access to open files in a new window.
 - **Identify External Change**:
