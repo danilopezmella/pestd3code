@@ -56,11 +56,6 @@
         "command": "extension.openManual",
         "title": "Open PEST++ Manual"
       },
-      {
-        "command": "pestd3code.autoSetPestCheckPath",
-        "title": "Auto-Set PestCheck Path",
-        "category": "PestD3code"
-    },
     {
         "command": "pestd3code.findPestCheck",
         "title": "Find PestCheck Executable",
@@ -70,7 +65,12 @@
       "command": "pestd3code.setPestcheckPath",
       "title": "Set PestCheck Path Manually",
       "category": "PestD3code"
-  }
+  },
+  {
+    "command": "pestd3code.runPestCheckOnActiveFile",
+    "title": "Run PestCheck on Active File",
+    "category": "PestD3code"
+}
       
     ],
     "languages": [
