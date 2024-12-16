@@ -3,7 +3,7 @@
 ### 0.0.6
 
 - **Pestcheck Compatibility!**
-  - Now compatible with `Pestcheck` for enhanced validation and error checking.
+  - Now compatible with `Pestcheck` for enhanced validation and error checking. Pestcheck.exe is not provided by the extension.
 - **Pestcheck Path and Settings**:
   - Added a field to specify the path for `Pestcheck` and its settings.
   - Implemented auto-setup commands to locate `Pestcheck` in the system path and common directories.
