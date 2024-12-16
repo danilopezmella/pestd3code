@@ -437,6 +437,7 @@ function parsePestCheckOutputErrors(outputFilePath: string): PestCheckError[] {
   console.log("errors: ", errors);
   return errors;
 }
+
 async function runPestCheckAndSaveOutput(): Promise<void> {
   const activeEditor = vscode.window.activeTextEditor;
   if (!activeEditor) {
@@ -454,10 +455,9 @@ async function runPestCheckAndSaveOutput(): Promise<void> {
     console.warn("Invalid file extension:", activeFilePath);
     return;
   }
-  let configuration = vscode.workspace.getConfiguration("pestd3code");
-  let pestCheckPath = configuration.get<string>("pestcheckPath", "");
 
-  console.log(`Configured PestCheck Path: ${pestCheckPath}`);
+  const configuration = vscode.workspace.getConfiguration("pestd3code");
+  let pestCheckPath = configuration.get<string>("pestcheckPath", "");
 
   if (!pestCheckPath || !fs.existsSync(pestCheckPath)) {
     vscode.window.showWarningMessage(
@@ -475,19 +475,16 @@ async function runPestCheckAndSaveOutput(): Promise<void> {
       const foundPath = await findPestCheck();
       if (foundPath) {
         pestCheckPath = foundPath;
+        await configuration.update("pestcheckPath", pestCheckPath, vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage(`PestCheck path automatically set to: ${pestCheckPath}`);
       } else {
         return;
       }
-      if (!pestCheckPath) {
-        vscode.window.showWarningMessage(
-          "PestCheck executable could not be found automatically. Please configure it manually."
-        );
-        return;
-      }
-      await configuration.update("pestcheckPath", pestCheckPath, vscode.ConfigurationTarget.Global);
     } else {
       return;
     }
+  } else {
+    console.log(`PestCheck is already configured at: ${pestCheckPath}`);
   }
 
   const tempFilePath = path.join(
@@ -571,6 +568,8 @@ async function runPestCheckAndSaveOutput(): Promise<void> {
     vscode.window.showWarningMessage(`Error running PestCheck: ${error}`);
   }
 }
+
+
 async function findPestCheck(): Promise<string | null> {
   console.log("Starting PestCheck search...");
 
@@ -776,15 +775,15 @@ export async function activate(
 
   const configuration = vscode.workspace.getConfiguration("pestd3code");
   let pestcheckPath = configuration.get<string>("pestcheckPath", "");
-
+ 
   const alreadyNotified = context.globalState.get<boolean>(
     "pestCheckNotified",
     false
   );
-
+  
   if (!pestcheckPath || !fs.existsSync(pestcheckPath)) {
     console.log("PestCheck path not configured or does not exist.");
-
+  
     if (!alreadyNotified) {
       console.log("Notifying user about missing PestCheck configuration...");
       await notifyPestCheckNotFound(context);
@@ -793,10 +792,13 @@ export async function activate(
       console.log("User has already been notified about missing PestCheck.");
     }
   } else {
-    console.log("PestCheck is already configured at:", pestcheckPath);
-    vscode.window.showInformationMessage(
-      `PestCheck is already configured at: ${pestcheckPath}`
-    );
+    if (!alreadyNotified) {
+      console.log("PestCheck is already configured at:", pestcheckPath);
+      vscode.window.showInformationMessage(
+        `PestCheck is already configured at: ${pestcheckPath}`
+      );
+      await context.globalState.update("pestCheckNotified", true); // Marcar como notificado
+    }
   }
 
   context.subscriptions.push(
