@@ -1,5 +1,10 @@
 # Change Log
 
+### 0.0.7
+
+- **Pestcheck Installation Check**:
+  - Added a minor update to avoid displaying the "Pestcheck already installed" message if Pestcheck is already present.
+
 ### 0.0.6
 
 - **Pestcheck Compatibility!**
