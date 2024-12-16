@@ -438,6 +438,7 @@ function parsePestCheckOutputErrors(outputFilePath: string): PestCheckError[] {
   return errors;
 }
 
+
 async function runPestCheckAndSaveOutput(): Promise<void> {
   const activeEditor = vscode.window.activeTextEditor;
   if (!activeEditor) {
@@ -507,7 +508,9 @@ async function runPestCheckAndSaveOutput(): Promise<void> {
     );
 
     console.log(`Executing PestCheck for: ${tempFilePath}`);
-    const pestProcess = spawn(pestCheckPath, [tempFilePath]);
+    const pestProcess = spawn(pestCheckPath, [tempFilePath], {
+      cwd: path.dirname(activeFilePath) // Set the working directory to the active file's directory
+    });
 
     const writeStream = fs.createWriteStream(tempOutputPath);
     console.log("Redirecting PestCheck output to temporary file...");
@@ -548,6 +551,10 @@ async function runPestCheckAndSaveOutput(): Promise<void> {
         });
 
         diagnosticCollection.set(activeEditor.document.uri, diagnostics);
+
+        if (errors.length === 0) {
+          vscode.window.showInformationMessage("PestCheck completed successfully with no errors.");
+        }
       } else {
         console.error("Temporary output file not created:", tempOutputPath);
       }
