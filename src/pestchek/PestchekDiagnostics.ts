@@ -78,7 +78,7 @@ export function parsePestchekOutput(output: string, fileName: string): PestchekR
             currentSection = 'WARNING';
             continue;
         }
-        if (!currentSection) continue;
+        if (!currentSection) {continue;}
 
         const lineMatch = line.match(/Line\s+(\d+)\s+of\s+(?:instruction\s+)?file\s+([^:]+):/);
         if (lineMatch) {
