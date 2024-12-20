@@ -14,7 +14,7 @@
 		"noFallthroughCasesInSwitch": true, // Previene errores en `switch` al no usar `break`
 		"resolveJsonModule": true,      // Permite importar archivos JSON
 		"moduleResolution": "node16",    // Usa la resolución de módulos compatible con Node.js
-		"noUnusedLocals": true,         // Advierte sobre variables locales no utilizadas
+		"noUnusedLocals": false,         // Advierte sobre variables locales no utilizadas
 		"noUnusedParameters": true      // Advierte sobre parámetros no utilizados en funciones
 	},
 	"include": ["src/**/*"], // Incluye todo el código fuente

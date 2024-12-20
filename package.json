@@ -82,8 +82,29 @@
         "command": "pestd3code.runPestCheck",
         "title": "Run PestCheck for generating output",
         "category": "PestD3code"
+      },
+      {
+        "command": "pestd3code.clearDiagnostics",
+        "title": "Clear diagnostics",
+        "category": "PestD3code"
       }
     ],
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "pestd3code.clearDiagnostics",
+          "when": "view == problems",
+          "group": "navigation"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "pestd3code.clearDiagnostics",
+          "when": "view == problems",
+          "group": "navigation"
+        }
+      ]
+    },
     "languages": [
       {
         "id": "pst",
