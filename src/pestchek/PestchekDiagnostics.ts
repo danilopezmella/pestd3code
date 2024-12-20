@@ -2,20 +2,51 @@ import { PestchekResult } from './types/PestchekTypes';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
-import { DiagnosticSeverity } from 'vscode';
+import { Diagnostic, DiagnosticSeverity, Range } from 'vscode';
+import * as fs from 'fs';
 
 const execAsync = promisify(exec);
 
+interface DiagnosticInfo {
+    start: { line: number; character: number };
+    end: { line: number; character: number };
+}
+
+function createDiagnostic(
+    type: 'ERROR' | 'WARNING',
+    message: string,
+    range?: DiagnosticInfo,
+    file?: string,
+    severity?: DiagnosticSeverity
+): PestchekResult {
+    const diagnosticRange = range || {
+        start: { line: 0, character: 0 },
+        end: { line: 0, character: 100 }
+    };
+
+    return {
+        diagnostic: new Diagnostic(
+            new Range(
+                diagnosticRange.start.line,
+                diagnosticRange.start.character,
+                diagnosticRange.end.line,
+                diagnosticRange.end.character
+            ),
+            message,
+            severity || (type === 'ERROR' ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning)
+        ),
+        file: file || ''
+    };
+}
+
 export async function analyzePestFile(filePath: string): Promise<PestchekResult[]> {
     try {
-        // Ejecutar pestchek
         const baseName = path.basename(filePath, '.pst');
         const dirName = path.dirname(filePath);
         const { stdout } = await execAsync('pestchek ' + baseName, { cwd: dirName });
         
         return parsePestchekOutput(stdout, baseName);
     } catch (error: any) {
-        // Si hay error en la ejecución pero tenemos stdout, intentamos parsear
         if (error.stdout) {
             return parsePestchekOutput(error.stdout, path.basename(filePath, '.pst'));
         }
@@ -23,216 +54,98 @@ export async function analyzePestFile(filePath: string): Promise<PestchekResult[
     }
 }
 
-export function parsePestchekOutput(output: string, _fileName: string): PestchekResult[] {
+function getOriginalPstFile(copyFile: string): string {
+    // Si el archivo es un .pst y comienza con copy_, retornamos el original
+    if (copyFile.endsWith('.pst') && copyFile.startsWith('copy_')) {
+        return copyFile.replace('copy_', '');
+    }
+    return copyFile;
+}
+
+export function parsePestchekOutput(output: string, fileName: string): PestchekResult[] {
     const results: PestchekResult[] = [];
     let currentSection: 'ERROR' | 'WARNING' | null = null;
-    let currentBlock: { file: string; messages: string[]; firstLine: number; currentMessage: string[] } | null = null;
 
-/*     // Agregar el warning inicial
+    // Agregar el warning inicial
     results.push(createDiagnostic(
         'WARNING',
         'PESTCHEK Version 18.25. Watermark Numerical Computing.',
-        1,
-        fileName
+        {
+            start: { line: 0, character: 0 },
+            end: { line: 0, character: 0 }
+        },
+        fileName,
+        2
     ));
- */
+
     const lines = output.split('\n').map(l => l.trim());
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
 
-        // Ignorar líneas vacías
-        if (!line) {
-            if (currentBlock && currentBlock.currentMessage.length > 0) {
-                const fullMessage = currentBlock.currentMessage.join(' ');
-                const isPestFile = currentBlock && (currentBlock.file.endsWith('.pst') || currentBlock.file.endsWith('.pest'));
-                const messageToStore = isPestFile ? 
-                    fullMessage :
-                    `Line ${currentBlock.firstLine} of ${currentBlock.file}: ${fullMessage}`;
-                
-                currentBlock.messages.push(messageToStore);
-                currentBlock.currentMessage = [];
-            }
-            continue;
-        }
-
-        // Detectar sección
         if (line.startsWith('PESTCHEK Version')) {
             continue;
         } else if (line.startsWith('Errors ----->')) {
-            currentSection = 'ERROR';
+            currentSection = 'WARNING';
+            continue;
+        } else if (line.startsWith('Warnings ----->')) {
+            currentSection = 'WARNING';
             continue;
         }
 
-        // Procesar líneas de error
-        if (currentSection === 'ERROR') {
-            const lineMatch = line.match(/^Line\s+(\d+)\s+of\s+([^:]+):\s*(.*)/);
-            if (lineMatch) {
-                // Si hay un mensaje acumulado, guardarlo
-                if (currentBlock && currentBlock.currentMessage.length > 0) {
-                    const fullMessage = currentBlock.currentMessage.join(' ');
-                    const isPestFile = currentBlock && (currentBlock.file.endsWith('.pst') || currentBlock.file.endsWith('.pest'));
-                    const messageToStore = isPestFile ? 
-                        fullMessage :
-                        `Line ${currentBlock.firstLine} of ${currentBlock.file}: ${fullMessage}`;
-                    
-                    currentBlock.messages.push(messageToStore);
-                    currentBlock.currentMessage = [];
-                }
+        if (!currentSection) continue;
 
-                const [, lineNum, file, message] = lineMatch;
-                
-                // Si es un nuevo archivo o primer bloque
-                if (!currentBlock || currentBlock.file !== file) {
-                    // Si hay un bloque anterior, procesarlo
-                    if (currentBlock) {
-                        // Verificar si hay referencia a dos archivos diferentes
-                        const hasSecondFileReference = currentBlock.messages.some(msg => 
-                            msg.includes('file') && msg.includes('.pst')
-                        );
+        const lineMatch = line.match(/Line\s+(\d+)\s+of\s+(?:instruction\s+)?file\s+([^:]+):/);
+        if (lineMatch) {
+            const reportedLineNumber = parseInt(lineMatch[1]);
+            let file = lineMatch[2];
+            
+            // Convertir la ruta del archivo si es necesario
+            file = getOriginalPstFile(file);
+            
+            let message = line;
+            
+            // Buscar el número de línea real en el archivo
+            const actualLineNumber = findLineNumberInFile(file, message);
+            console.log(`Archivo: ${file}, Línea reportada: ${reportedLineNumber}, Línea encontrada: ${actualLineNumber}`);
 
-                        if (hasSecondFileReference) {
-                            // Si hay referencia a dos archivos, mostrar todo en línea 0
-                            results.push(createDiagnostic(
-                                'WARNING',
-                                currentBlock.messages.join('\n'),
-                                1,
-                                currentBlock?.file ?? '',
-                                {
-                                    start: { line: 0, character: 0 },
-                                    end: { line: 0, character: 100 }
-                                }
-                            ));
-                        } else {
-                            // Si solo hay un archivo, mostrar cada error en su línea correspondiente
-                            currentBlock.messages.forEach((msg: string) => {
-                                const isPestFile = currentBlock && (currentBlock.file.endsWith('.pst') || currentBlock.file.endsWith('.pest'));
-                                if (isPestFile) {
-                                    results.push(createDiagnostic(
-                                        'ERROR',
-                                        msg,
-                                        0,
-                                        currentBlock?.file ?? '',
-                                        {
-                                            start: { line: (currentBlock?.firstLine ?? 1) - 1, character: 0 },
-                                            end: { line: (currentBlock?.firstLine ?? 1) - 1, character: 100 }
-                                        }
-                                    ));
-                                } else {
-                                    // Para otros archivos, mantener el mensaje completo
-                                    results.push(createDiagnostic(
-                                        'WARNING',
-                                        msg,
-                                        2,
-                                        currentBlock?.file ?? '',
-                                        {
-                                            start: { line: 0, character: 0 },
-                                            end: { line: 0, character: 100 }
-                                        }
-                                    ));
-                                }
-                            });
-                        }
-                    }
-                    // Iniciar nuevo bloque
-                    currentBlock = {
-                        file,
-                        messages: [],
-                        firstLine: parseInt(lineNum),
-                        currentMessage: [message]
-                    };
-                } else {
-                    currentBlock.firstLine = parseInt(lineNum);
-                    currentBlock.currentMessage = [message];
-                }
-                continue;
+            // Si el mensaje continúa en la siguiente línea
+            while (i + 1 < lines.length && !lines[i + 1].match(/Line\s+\d+/) && lines[i + 1].trim()) {
+                i++;
+                message += ' ' + lines[i].trim();
             }
 
-            // Si no es una línea que comienza con "Line", agregar al mensaje actual
-            if (currentBlock) {
-                currentBlock.currentMessage.push(line);
-            }
-        }
-    }
-
-    // Procesar el último mensaje acumulado si existe
-    if (currentBlock && currentBlock.currentMessage.length > 0) {
-        const fullMessage = currentBlock.currentMessage.join(' ');
-        const isPestFile = currentBlock.file.endsWith('.pst') || currentBlock.file.endsWith('.pest');
-        const messageToStore = isPestFile ? 
-            fullMessage :
-            `Line ${currentBlock.firstLine} of ${currentBlock.file}: ${fullMessage}`;
-        
-        currentBlock.messages.push(messageToStore);
-    }
-
-    // Procesar el último bloque si existe
-    if (currentBlock) {
-        const hasSecondFileReference = currentBlock.messages.some(msg => 
-            msg.includes('file') && msg.includes('.pst')
-        );
-
-        if (hasSecondFileReference) {
-            // Si hay referencia a dos archivos, mostrar todo en línea 0
+            const lineNumber = actualLineNumber || reportedLineNumber;
             results.push(createDiagnostic(
                 'WARNING',
-                currentBlock.messages.join('\n'),
-                1,
-                currentBlock.file,
+                message,
                 {
-                    start: { line: 0, character: 0 },
-                    end: { line: 0, character: 100 }
-                }
+                    start: { line: lineNumber - 1, character: 0 },
+                    end: { line: lineNumber - 1, character: Number.MAX_VALUE }
+                },
+                file,
+                2
             ));
-        } else {
-            // Si solo hay un archivo, mostrar cada error en su línea correspondiente
-            currentBlock.messages.forEach((msg) => {
-                const isPestFile = currentBlock.file.endsWith('.pst') || currentBlock.file.endsWith('.pest');
-                if (isPestFile) {
-                    results.push(createDiagnostic(
-                        'ERROR',
-                        msg,
-                        0,
-                        currentBlock.file,
-                        {
-                            start: { line: currentBlock.firstLine - 1, character: 0 },
-                            end: { line: currentBlock.firstLine - 1, character: 100 }
-                        }
-                    ));
-                } else {
-                    // Para otros archivos, mantener el mensaje completo
-                    results.push(createDiagnostic(
-                        'WARNING',
-                        msg,
-                        2,
-                        currentBlock.file,
-                        {
-                            start: { line: 0, character: 0 },
-                            end: { line: 0, character: 100 }
-                        }
-                    ));
-                }
-            });
         }
     }
 
     return results;
 }
 
-function createDiagnostic(
-    tipo: 'ERROR' | 'WARNING',
-    descripcion: string,
-    severity: DiagnosticSeverity,
-    archivo: string = '',
-    range?: { start: { line: number; character: number }; end: { line: number; character: number } }
-): PestchekResult {
-    return {
-        tipo,
-        descripcion,
-        valor: '',
-        archivo,
-        linea: range?.start.line,
-        severity,
-        range
-    };
+function findLineNumberInFile(filePath: string, searchText: string): number {
+    try {
+        console.log(`Buscando en archivo: ${filePath}`);
+        const content = fs.readFileSync(filePath, 'utf8');
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].includes(searchText)) {
+                console.log(`Encontrado en línea ${i}`);
+                return i + 1; // +1 porque los editores empiezan en línea 1
+            }
+        }
+        console.log('No se encontró el texto');
+    } catch (error) {
+        console.error('Error leyendo archivo:', error);
+    }
+    return 0;
 }
