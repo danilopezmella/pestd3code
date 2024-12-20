@@ -658,7 +658,7 @@ async function runPestCheckAndSaveOutput(): Promise<void> {
         return;
     }
     highlightFirstLineWithText(editor); */
-    //vscode.window.showInformationMessage('PESTCHECK annotation added to the first line!');
+    //vscode.window.showInformationMyessage('PESTCHECK annotation added to the first line!');
         // Borrar el archivo temporal
         if (fs.existsSync(tempFilePath)) {
             fs.unlinkSync(tempFilePath);

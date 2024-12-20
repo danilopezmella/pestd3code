@@ -68,25 +68,33 @@ export function parsePestchekOutput(output: string, fileName: string): PestchekR
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
+        console.log(`Procesando línea ${i}: ${line}`);
 
         if (line.startsWith('PESTCHEK Version')) {
+            console.log('Encontrada versión de PESTCHEK, continuando...');
             continue;
         } else if (line.startsWith('Errors ----->')) {
+            console.log('Sección de errores encontrada');
             currentSection = 'ERROR';
             continue;
         } else if (line.startsWith('Warnings ----->')) {
+            console.log('Sección de advertencias encontrada');
             currentSection = 'WARNING';
             continue;
         }
-        if (!currentSection) {continue;}
+
+        if (!currentSection) continue;
 
         const lineMatch = line.match(/Line\s+(\d+)\s+of\s+(?:instruction\s+)?file\s+([^:]+):/);
+        
         if (lineMatch) {
             const reportedLineNumber = parseInt(lineMatch[1]);
             let file = lineMatch[2];
+            console.log(`Línea reportada: ${reportedLineNumber}, Archivo: ${file}`);
             
             // Convertir la ruta del archivo si es necesario
             file = getOriginalPstFile(file);
+            console.log(`Archivo convertido: ${file}`);
             
             let message = line;
             
@@ -96,23 +104,26 @@ export function parsePestchekOutput(output: string, fileName: string): PestchekR
 
             // Si el mensaje continúa en la siguiente línea
             while (i + 1 < lines.length && !lines[i + 1].match(/Line\s+\d+/) && lines[i + 1].trim()) {
-            i++;
-            message += ' ' + lines[i].trim();
+                i++;
+                message += ' ' + lines[i].trim();
+                console.log(`Mensaje extendido: ${message}`);
             }
-
             const lineNumber = actualLineNumber || reportedLineNumber;
+            console.log(`Número de línea usado: ${lineNumber}`);
             results.push(createDiagnostic(
-            currentSection,
-            message,
-            {
-                start: { line: lineNumber - 1, character: 0 },
-                end: { line: lineNumber - 1, character: Number.MAX_VALUE }
-            },
-            file,
-            currentSection === 'ERROR' ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning
+                currentSection,
+                message,
+                {
+                    start: { line: lineNumber - 1, character: 0 },
+                    end: { line: lineNumber - 1, character: Number.MAX_VALUE }
+                },
+                file,
+                currentSection === 'ERROR' ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning
             ));
+            console.log(`Diagnóstico creado: ${message}`);
         }
     }
+
     return results;
 }
 
