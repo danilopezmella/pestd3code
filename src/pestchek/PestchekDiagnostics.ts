@@ -25,6 +25,7 @@ function createDiagnostic(
     };
 
     return {
+        type: type,
         diagnostic: new Diagnostic(
             new Range(
                 diagnosticRange.start.line,
@@ -33,26 +34,12 @@ function createDiagnostic(
                 diagnosticRange.end.character
             ),
             message,
-            severity || (type === 'ERROR' ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning)
+            severity ?? (type === 'ERROR' ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning)
         ),
         file: file || ''
     };
 }
 
-export async function analyzePestFile(filePath: string): Promise<PestchekResult[]> {
-    try {
-        const baseName = path.basename(filePath, '.pst');
-        const dirName = path.dirname(filePath);
-        const { stdout } = await execAsync('pestchek ' + baseName, { cwd: dirName });
-        
-        return parsePestchekOutput(stdout, baseName);
-    } catch (error: any) {
-        if (error.stdout) {
-            return parsePestchekOutput(error.stdout, path.basename(filePath, '.pst'));
-        }
-        throw error;
-    }
-}
 
 function getOriginalPstFile(copyFile: string): string {
     // Si el archivo es un .pst y comienza con copy_, retornamos el original
@@ -75,7 +62,6 @@ export function parsePestchekOutput(output: string, fileName: string): PestchekR
             end: { line: 0, character: 0 }
         },
         fileName,
-        2
     ));
 
     const lines = output.split('\n').map(l => l.trim());
@@ -86,13 +72,12 @@ export function parsePestchekOutput(output: string, fileName: string): PestchekR
         if (line.startsWith('PESTCHEK Version')) {
             continue;
         } else if (line.startsWith('Errors ----->')) {
-            currentSection = 'WARNING';
+            currentSection = 'ERROR';
             continue;
         } else if (line.startsWith('Warnings ----->')) {
             currentSection = 'WARNING';
             continue;
         }
-
         if (!currentSection) continue;
 
         const lineMatch = line.match(/Line\s+(\d+)\s+of\s+(?:instruction\s+)?file\s+([^:]+):/);
@@ -111,24 +96,23 @@ export function parsePestchekOutput(output: string, fileName: string): PestchekR
 
             // Si el mensaje continúa en la siguiente línea
             while (i + 1 < lines.length && !lines[i + 1].match(/Line\s+\d+/) && lines[i + 1].trim()) {
-                i++;
-                message += ' ' + lines[i].trim();
+            i++;
+            message += ' ' + lines[i].trim();
             }
 
             const lineNumber = actualLineNumber || reportedLineNumber;
             results.push(createDiagnostic(
-                'WARNING',
-                message,
-                {
-                    start: { line: lineNumber - 1, character: 0 },
-                    end: { line: lineNumber - 1, character: Number.MAX_VALUE }
-                },
-                file,
-                2
+            currentSection,
+            message,
+            {
+                start: { line: lineNumber - 1, character: 0 },
+                end: { line: lineNumber - 1, character: Number.MAX_VALUE }
+            },
+            file,
+            currentSection === 'ERROR' ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning
             ));
         }
     }
-
     return results;
 }
 
