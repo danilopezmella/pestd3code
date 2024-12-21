@@ -4,22 +4,26 @@ import { parse } from "csv-parse/sync";
 import * as path from "path";
 import { exec } from "child_process";
 import * as os from "os";
-//import { promisify } from 'util';
-
 import { spawn } from "child_process";
+import { parsePestchekOutput } from './pestchek/PestchekDiagnostics2';
 
-//const execAsync = promisify(exec);
 
-// Importar al inicio del archivo
-import { parsePestchekOutput } from "./pestchek/PestchekDiagnostics";
 
-/*
-========================================================
-    VALIDATION HELPERS
-    Functions to validate input and ensure correctness
-========================================================
-*/
+// Log input channel
+function log(message: string) {
+    console.log(message);
+    try {
+        if (outputChannel) {
+            outputChannel.appendLine(message);
+        }
+    } catch (e) {
+        console.error('Error writing to outputChannel:', e);
+    }
+}
 
+let outputChannel: vscode.OutputChannel | undefined;
+
+// #region Type definitions
 type DescriptionData = {
     controlid: string;
     itemid: string;
@@ -51,13 +55,7 @@ type VariableWithoutAllowedValues = {
 };
 
 type Variable = VariableWithAllowedValues | VariableWithoutAllowedValues;
-
-/*
-========================================================
-    Load descriptions from CSV file
-    
-========================================================
-*/
+// #endregion Type definitions
 
 // #region Load descriptions from CSV file
 async function loadDescriptions(
@@ -78,14 +76,8 @@ async function loadDescriptions(
     descriptions = records as DescriptionData[];
 }
 
-/*
-========================================================
-    VALIDATION HELPERS
-    Functions to validate input and ensure correctness
-========================================================
-*/
-
 // #endregion Load descriptions from CSV file
+
 // #region Define the structure of the PEST control file
 const controlDataStructure: Variable[][] = [
     [
@@ -261,6 +253,7 @@ const regularizationDataStructure = [
 ];
 
 // #endregion Define the structure of the PEST control file
+
 // #region Document Symbol Provider
 class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
     public provideDocumentSymbols(
@@ -291,7 +284,8 @@ class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
                 vscode.SymbolKind.Field,
                 "",
                 new vscode.Location(document.uri, new vscode.Range(0, 0, 0, 0))
-        ));
+            )
+        );
 
         let inPestPlusSection = false; // Bandera para bloques Pest++
         let currentSymbol: vscode.SymbolInformation | null = null;
@@ -380,6 +374,7 @@ class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 }
 
 //#endregion Document Symbol Provider
+
 // #region Validate type of the variable
 function validateType(
     value: string,
@@ -395,232 +390,7 @@ function validateType(
 }
 // #endregion Validate type of the variable
 
-/*
-========================================================
-    PESH CHECK FUNCTIONS
-    Functions to find and configure PestCheck
-========================================================
-
-*/
-let diagnosticCollection: vscode.DiagnosticCollection | undefined;
-
-interface PestCheckError {
-    line: string;
-    description: string;
-}
-
-async function runPestCheck(activeEditor: vscode.TextEditor, pestCheckPath: string) {
-    const activeFilePath = activeEditor.document.uri.fsPath;
-    const tempOutputPath = path.join(path.dirname(activeFilePath), "pestcheck_output.txt");
-    
-    // Bandera para alternar entre métodos (temporal durante migración)
-    const useNewMethod = false; // Cambiar a true para probar nuevo método
-
-    try {
-        if (useNewMethod) {
-            // === NUEVO MÉTODO (en memoria) ===
-            console.log('Using new in-memory method...');
-            const content = activeEditor.document.getText();
-            const workingDirectory = path.dirname(activeFilePath);
-            const fileNameWithoutExtension = path.basename(activeFilePath, path.extname(activeFilePath));
-
-            try {
-                const output = await executePestCheckInMemory(
-                    content,
-                    pestCheckPath,
-                    workingDirectory,
-                    fileNameWithoutExtension
-                );
-                await processPestCheckOutput(output, activeFilePath, activeEditor);
-            } catch (error) {
-                console.error('Error in new method, falling back to old method:', error);
-                // Fallback al método antiguo si falla
-                await executeOldMethod(activeEditor, pestCheckPath, activeFilePath, tempOutputPath);
-            }
-
-        } else {
-            // === MÉTODO ANTIGUO (con archivos temporales) ===
-            console.log('Using old file-based method...');
-            await executeOldMethod(activeEditor, pestCheckPath, activeFilePath, tempOutputPath);
-        }
-
-    } catch (error) {
-        console.error('Error executing PestCheck:', error);
-        vscode.window.showErrorMessage(`Error running PestCheck: ${error}`);
-    }
-}
-
-// Nuevo método usando memoria
-async function executePestCheckInMemory(
-    content: string,
-    pestCheckPath: string,
-    workingDirectory: string,
-    fileNameWithoutExtension: string
-): Promise<string> {
-    return new Promise((resolve, reject) => {
-        try {
-            const pestProcess = spawn(
-                path.basename(pestCheckPath),
-                ['-'],
-                { 
-                    cwd: workingDirectory,
-                    stdio: ['pipe', 'pipe', 'pipe'] 
-                }
-            );
-
-            let output = '';
-
-            pestProcess.stdout.on('data', (data) => {
-                output += data.toString();
-                console.log(`stdout: ${data}`);
-            });
-
-            pestProcess.stderr.on('data', (data) => {
-                output += data.toString();
-                console.error(`stderr: ${data}`);
-            });
-
-            pestProcess.on('close', (code) => {
-                console.log(`PestCheck process exited with code: ${code}`);
-                resolve(output);
-            });
-
-            pestProcess.on('error', reject);
-
-            // Escribir contenido y cerrar stdin
-            pestProcess.stdin.write(content);
-            pestProcess.stdin.end();
-
-        } catch (error) {
-            reject(error);
-        }
-    });
-}
-
-// Método antiguo (existente)
-async function executeOldMethod(
-    activeEditor: vscode.TextEditor,
-    pestCheckPath: string,
-    activeFilePath: string,
-    tempOutputPath: string
-): Promise<void> {
-    const tempFilePath = path.join(
-        path.dirname(activeFilePath),
-        `copy_${path.basename(activeFilePath)}`
-    );
-
-    try {
-        // Escribir el contenido del editor en un archivo temporal
-        const content = activeEditor.document.getText();
-        fs.writeFileSync(tempFilePath, content);
-        console.log(`Written active editor content to temporary file: ${tempFilePath}`);
-
-        // Obtener solo el nombre del archivo sin la extensión
-        const pestCheckExecutable = path.basename(pestCheckPath);
-        const tempFileNameWithoutExtension = path.basename(
-            tempFilePath,
-            path.extname(tempFilePath)
-        );
-
-        console.log(`Executing PestCheck for: ${tempFileNameWithoutExtension}`);
-        const pestProcess = spawn(
-            pestCheckExecutable,
-            [tempFileNameWithoutExtension],
-            { cwd: path.dirname(tempFilePath) }
-        );
-
-        const writeStream = fs.createWriteStream(tempOutputPath);
-        console.log("Redirecting PestCheck output to temporary file...");
-
-        pestProcess.stdout.pipe(writeStream);
-        pestProcess.stderr.pipe(writeStream);
-
-        pestProcess.stdout.on("data", (data) => {
-            console.log(`stdout: ${data}`);
-        });
-
-        pestProcess.stderr.on("data", (data) => {
-            console.error(`stderr: ${data}`);
-        });
-
-        await new Promise<void>((resolve, reject) => {
-            pestProcess.on("close", (code) => {
-                console.log(`PestCheck process exited with code: ${code}`);
-                resolve();
-            });
-
-            pestProcess.on("error", (err) => {
-                console.error("Error executing PestCheck:", err);
-                reject(err);
-            });
-        });
-
-        // Leer y procesar la salida
-        if (fs.existsSync(tempOutputPath)) {
-            const output = fs.readFileSync(tempOutputPath, "utf8");
-            await processPestCheckOutput(output, activeFilePath, activeEditor);
-        }
-
-    } finally {
-        // Limpieza de archivos temporales
-        if (fs.existsSync(tempFilePath)) {
-            fs.unlinkSync(tempFilePath);
-            console.log(`Temporary file deleted: ${tempFilePath}`);
-        }
-        if (fs.existsSync(tempOutputPath)) {
-            fs.unlinkSync(tempOutputPath);
-            console.log(`Temporary output file deleted: ${tempOutputPath}`);
-        }
-    }
-}
-
-// Procesar salida (común para ambos métodos)
-async function processPestCheckOutput(
-    output: string,
-    activeFilePath: string,
-    activeEditor: vscode.TextEditor
-): Promise<void> {
-    console.log('====== PestCheck Output Start ======');
-    console.log(output);
-    console.log('====== PestCheck Output End ======');
-
-    const results = parsePestchekOutput(output, activeFilePath);
-    
-    if (!diagnosticCollection) {
-        diagnosticCollection = vscode.languages.createDiagnosticCollection('pestCheck');
-    }
-    diagnosticCollection.clear();
-
-    const diagnosticsMap = new Map<string, vscode.Diagnostic[]>();
-    
-    for (const result of await results) {
-        const filePath = result.file.startsWith('/') || result.file.includes(':') 
-            ? result.file 
-            : path.join(path.dirname(activeFilePath), result.file);
-        const uri = vscode.Uri.file(filePath);
-        const diagnostics = diagnosticsMap.get(uri.toString()) || [];
-        diagnostics.push(result.diagnostic);
-        diagnosticsMap.set(uri.toString(), diagnostics);
-    }
-
-    diagnosticsMap.forEach((diagnostics, uriString) => {
-        diagnosticCollection!.set(vscode.Uri.parse(uriString), diagnostics);
-    });
-
-    const hasErrors = (await results).some(result => result.diagnostic.severity === vscode.DiagnosticSeverity.Error);
-    if (!hasErrors) {
-        vscode.window.showInformationMessage('PestCheck completado exitosamente.');
-    } else {
-        vscode.window.showErrorMessage('PestCheck completado con errores.');
-    }
-}
-
-function clearDiagnostics() {
-    if (diagnosticCollection) {
-        diagnosticCollection.clear();
-        vscode.window.showInformationMessage("Diagnostics cleared.");
-    }
-}
+// #region Find PESTCHECK executable
 
 async function findPestCheck(): Promise<string | null> {
     console.log("Starting PestCheck search...");
@@ -631,9 +401,7 @@ async function findPestCheck(): Promise<string | null> {
     // 1. Intentar con comandos específicos de la plataforma
     const pathFromCommand = await findPestCheckUsingCommand(platform);
     if (pathFromCommand) {
-        vscode.window.showInformationMessage(
-            `PestCheck found using command: ${pathFromCommand}`
-        );
+        vscode.window.showInformationMessage(`PestCheck found using command: ${pathFromCommand}`);
         console.log("Found via command:", pathFromCommand);
         return pathFromCommand;
     }
@@ -654,13 +422,8 @@ async function findPestCheck(): Promise<string | null> {
     }
 
     // No encontrado
-    const warningMessage =
-        "PestCheck executable not found using any method. Please configure it manually.";
-    const userChoice = await vscode.window.showWarningMessage(
-        warningMessage,
-        "Auto Set PestCheck Path",
-        "Manual Configuration"
-    );
+    const warningMessage = "PestCheck executable not found using any method. Please configure it manually.";
+    const userChoice = await vscode.window.showWarningMessage(warningMessage, "Auto Set PestCheck Path", "Manual Configuration");
     if (userChoice === "Auto Set PestCheck Path") {
         await autoSetPestCheckPath();
     } else if (userChoice === "Manual Configuration") {
@@ -682,15 +445,13 @@ function getCommonPaths(platform: NodeJS.Platform): string[] {
     ];
 
     if (platform === "win32") {
-        return commonPaths.filter((p) => p.includes("C:"));
+        return commonPaths.filter(p => p.includes("C:"));
     } else {
-        return commonPaths.filter((p) => !p.includes("C:"));
+        return commonPaths.filter(p => !p.includes("C:"));
     }
 }
 
-async function findPestCheckUsingCommand(
-    platform: NodeJS.Platform
-): Promise<string | null> {
+async function findPestCheckUsingCommand(platform: NodeJS.Platform): Promise<string | null> {
     const command = platform === "win32" ? "where pestchek" : "which pestchek";
     console.log(`Trying to find pestchek using ${command}...`);
 
@@ -715,19 +476,15 @@ async function findPestCheckUsingCommand(
 async function autoSetPestCheckPath() {
     const path = await findPestCheck();
     if (path) {
-        await vscode.workspace
-            .getConfiguration("pestd3code")
-            .update("pestcheckPath", path, vscode.ConfigurationTarget.Global);
-        vscode.window.showInformationMessage(
-            `PestCheck path automatically set to: ${path}`
-        );
+        await vscode.workspace.getConfiguration("pestd3code").update("pestcheckPath", path, vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage(`PestCheck path automatically set to: ${path}`);
     } else {
         const userChoice = await vscode.window.showWarningMessage(
-            "PestCheck executable not found. Would you like to set it manually?",
-            "Browse",
-            "Skip"
+            'PestCheck executable not found. Would you like to set it manually?',
+            'Browse',
+            'Skip'
         );
-        if (userChoice === "Browse") {
+        if (userChoice === 'Browse') {
             await browseForPestCheckPath();
         }
     }
@@ -762,24 +519,267 @@ async function browseForPestCheckPath() {
         vscode.window.showWarningMessage("No file selected.");
     }
 }
+// #endregion Find PESTCHECK executable
 
-/*
-========================================================
-    MAIN ACTIVATION FUNCTION
-    Entry point for the extension
-========================================================
-*/
+// #region RUN PESTCHEK! The good stuff starts here
 
-//#region Extension activation
-export async function activate(context: vscode.ExtensionContext) {
-    // Logs de diagnóstico
-    console.log('=====================================');
-    console.log('PestD3Code: Starting activation...');
-    console.log('Extension path:', context.extensionPath);
-    console.log('Workspace folders:', vscode.workspace.workspaceFolders);
-    console.log('Active editor:', vscode.window.activeTextEditor?.document.uri);
-    console.log('=====================================');
+let timeout: NodeJS.Timeout | undefined;
+let diagnosticCollection: vscode.DiagnosticCollection | undefined;
 
+interface PestCheckError {
+    line: string;
+    description: string;
+}
+
+function parsePestCheckOutputErrors(outputFilePath: string): PestCheckError[] {
+    const errors: PestCheckError[] = [];
+    const fileContent = fs.readFileSync(outputFilePath, "utf8");
+    const lines = fileContent.split("\n");
+
+    let currentError: PestCheckError | null = null;
+
+    for (const line of lines) {
+        const match = line.match(/Line (\d+) of file .+?: (.+)/);
+        if (match) {
+            if (currentError) {
+                errors.push(currentError);
+            }
+            currentError = {
+                line: `Line ${match[1]}`,
+                description: match[2].trim(),
+            };
+        } else if (currentError && line.trim() !== "") {
+            currentError.description += ` ${line.trim()}`;
+        }
+    }
+
+    if (currentError) {
+        errors.push(currentError);
+    }
+
+    console.log("errors: ", errors);
+    return errors;
+}
+
+// PESTCHECK FUNCTION with no copy of the file
+async function runPestCheck(document: vscode.TextDocument): Promise<void> {
+    const filePath = document.uri.fsPath;
+    const fileNameWithoutExt = path.parse(filePath).name;
+    const fileDir = path.dirname(filePath);
+    console.log(`Running PestCheck for: ${fileNameWithoutExt}`);
+    const configuration = vscode.workspace.getConfiguration("pestd3code");
+    let pestCheckPath = configuration.get<string>("pestcheckPath", "");
+    if (!pestCheckPath || !fs.existsSync(pestCheckPath)) {
+        vscode.window.showWarningMessage("PestCheck executable path is not configured or invalid.");
+        return;
+    }
+    try {
+        const pestProcess = spawn(
+            pestCheckPath,
+            [fileNameWithoutExt],
+            { cwd: fileDir }
+        );
+        let output = '';
+        pestProcess.stdout.on('data', (data) => {
+            output += data.toString();
+        });
+        pestProcess.stderr.on('data', (data) => {
+            output += data.toString();
+        });
+        pestProcess.on('close', (code) => {
+            console.log('====== PestCheck Output Start ======');
+            console.log('Raw output:');
+            console.log(output);
+            console.log('====== PestCheck Output End ======');
+
+            console.log(`PestCheck process exited with code: ${code}`);
+
+            // Usar el nuevo parser
+            const results = parsePestchekOutput(output);
+            // Actualizar diagnósticos
+            if (!diagnosticCollection) {
+                diagnosticCollection =
+                    vscode.languages.createDiagnosticCollection("pestCheck");
+            }
+            diagnosticCollection.clear();
+            const diagnostics = results.map(result => result.diagnostic);
+            diagnosticCollection.set(document.uri, diagnostics);
+        });
+    } catch (error) {
+        console.error("Error executing PestCheck:", error);
+        vscode.window.showWarningMessage(`Error running PestCheck: ${error}`);
+    }
+}
+
+function triggerPestCheck(document: vscode.TextDocument) {
+    if (timeout) {
+        clearTimeout(timeout);
+    }
+
+    timeout = setTimeout(() => {
+        runPestCheck(document);
+    }, 1000); // Espera 1 segundo después del último cambio
+}
+
+async function runPestCheckAndSaveOutput(): Promise<void> {
+    const activeEditor = vscode.window.activeTextEditor;
+    if (!activeEditor) {
+        vscode.window.showWarningMessage("No active file is open.");
+        return;
+    }
+
+    const activeFilePath = activeEditor.document.fileName;
+    console.log(`Active file path: ${activeFilePath}`);
+
+    if (!activeFilePath.endsWith(".pst") && !activeFilePath.endsWith(".pest")) {
+        vscode.window.showWarningMessage(
+            "The active file must be a .pst or .pest file."
+        );
+        console.warn("Invalid file extension:", activeFilePath);
+        return;
+    }
+
+    const configuration = vscode.workspace.getConfiguration("pestd3code");
+    let pestCheckPath = configuration.get<string>("pestcheckPath", "");
+
+    if (!pestCheckPath || !fs.existsSync(pestCheckPath)) {
+        vscode.window.showWarningMessage(
+            "PestCheck executable path is not configured or invalid."
+        );
+        console.error("PestCheck executable not found:", pestCheckPath);
+
+        const userChoice = await vscode.window.showWarningMessage(
+            "PestCheck executable not found. Would you like to auto-find it?",
+            "Yes",
+            "No"
+        );
+
+        if (userChoice === "Yes") {
+            const foundPath = await findPestCheck();
+            if (foundPath) {
+                pestCheckPath = foundPath;
+                await configuration.update("pestcheckPath", pestCheckPath, vscode.ConfigurationTarget.Global);
+                vscode.window.showInformationMessage(`PestCheck path automatically set to: ${pestCheckPath}`);
+            } else {
+                return;
+            }
+        } else {
+            return;
+        }
+    } else {
+        console.log(`PestCheck is already configured at: ${pestCheckPath}`);
+    }
+
+    const tempFilePath = path.join(
+        path.dirname(activeFilePath),
+        `copy_${path.basename(activeFilePath)}`
+    );
+    const tempOutputPath = path.join(
+        path.dirname(activeFilePath),
+        "pestcheck_output.txt"
+    );
+    console.log(`Temporary file path: ${tempFilePath}`);
+    console.log(`Temporary output file path: ${tempOutputPath}`);
+
+    try {
+        // Escribir el contenido del editor en un archivo temporal
+        const content = activeEditor.document.getText();
+        fs.writeFileSync(tempFilePath, content);
+        console.log(
+            `Written active editor content to temporary file: ${tempFilePath}`
+        );
+
+        console.log(`Executing PestCheck for: ${tempFilePath}`);
+        const pestProcess = spawn(pestCheckPath, [tempFilePath]);
+
+        const writeStream = fs.createWriteStream(tempOutputPath);
+        console.log("Redirecting PestCheck output to temporary file...");
+
+        pestProcess.stdout.pipe(writeStream);
+        pestProcess.stderr.pipe(writeStream);
+
+        pestProcess.on("close", (code) => {
+            console.log(`PestCheck process exited with code: ${code}`);
+
+            if (fs.existsSync(tempOutputPath)) {
+                const output = fs.readFileSync(tempOutputPath, "utf8");
+                console.log("====== PestCheck Output Start ======");
+                console.log(output);
+                console.log("====== PestCheck Output End ======");
+
+                // Parsear el archivo de salida y generar la base de datos de errores
+                const errors = parsePestCheckOutputErrors(tempOutputPath);
+                console.log(errors);
+
+                // Crear o limpiar la colección de diagnósticos
+                if (!diagnosticCollection) {
+                    diagnosticCollection =
+                        vscode.languages.createDiagnosticCollection("pestCheck");
+                }
+                diagnosticCollection.clear();
+
+                // Agregar diagnósticos a la sección "Problems" de VS Code
+                const diagnostics: vscode.Diagnostic[] = errors.map((error) => {
+                    const lineNumber = parseInt(error.line.replace("Line ", ""), 10) - 1;
+                    const range = new vscode.Range(lineNumber, 0, lineNumber, 0);
+                    const diagnostic = new vscode.Diagnostic(
+                        range,
+                        error.description,
+                        vscode.DiagnosticSeverity.Warning
+                    );
+                    return diagnostic;
+                });
+
+                diagnosticCollection.set(activeEditor.document.uri, diagnostics);
+            } else {
+                console.error("Temporary output file not created:", tempOutputPath);
+            }
+
+            // Borrar el archivo temporal
+            fs.unlinkSync(tempFilePath);
+            console.log(`Temporary file deleted: ${tempFilePath}`);
+
+            // Borrar el archivo de salida temporal
+            fs.unlinkSync(tempOutputPath);
+            console.log(`Temporary output file deleted: ${tempOutputPath}`);
+
+            // Log para depuración adicional
+            console.log(`Temporary file exists: ${fs.existsSync(tempOutputPath)}`);
+        });
+    } catch (error) {
+        console.error("Error executing PestCheck:", error);
+        vscode.window.showWarningMessage(`Error running PestCheck: ${error}`);
+    }
+}
+
+// #endregion RUN PESTCHEK. The good stuff ends here
+
+/*=======================================================
+MAIN EXTENSION ACTIVATION FUNCTION
+=======================================================*/
+
+// #region MAIN EXTENSION ACTIVATION FUNCTION
+
+export async function activate(
+
+    context: vscode.ExtensionContext
+): Promise<void> {
+
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeTextDocument(event => {
+            const document = event.document;
+            if (document.fileName.endsWith('.pst') || document.fileName.endsWith('.pest')) {
+                triggerPestCheck(document);
+            }
+        })
+    );
+
+
+    /*=======================================================
+    Browse for PestCheck path
+    =======================================================*/
+
+    // #region Browse for PestCheck path
     async function browseForPestCheckPath(_context: vscode.ExtensionContext) {
         console.log("Opening file dialog for manual PestCheck path selection...");
         const selectedFile = await vscode.window.showOpenDialog({
@@ -789,11 +789,9 @@ export async function activate(context: vscode.ExtensionContext) {
             filters: { Executables: ["exe"] },
             openLabel: "Select PestCheck Executable",
         });
-
         if (selectedFile && selectedFile[0]) {
             const pestcheckPath = selectedFile[0].fsPath;
             console.log("User selected PestCheck path:", pestcheckPath);
-
             await vscode.workspace
                 .getConfiguration("pestd3code")
                 .update(
@@ -833,22 +831,8 @@ export async function activate(context: vscode.ExtensionContext) {
                         }
                     });
             }
-        }),
-        vscode.commands.registerCommand("pestd3code.runPestCheck", () => {
-            const editor = vscode.window.activeTextEditor;
-            if (editor) {
-                runPestCheck(editor, pestcheckPath);
-            } else {
-                vscode.window.showErrorMessage('No active text editor found');
-            }
         })
     );
-
-    console.log(
-        "Commands registered: autoSetPestCheckPath, findPestCheck, runPestCheck"
-    );
-
-    console.log("Activating PestD3code extension...");
 
     const configuration = vscode.workspace.getConfiguration("pestd3code");
     let pestcheckPath = configuration.get<string>("pestcheckPath", "");
@@ -863,9 +847,8 @@ export async function activate(context: vscode.ExtensionContext) {
 
         if (!alreadyNotified) {
             console.log("Notifying user about missing PestCheck configuration...");
-            notifyPestCheckNotFound(context).then(() => {
-                context.globalState.update("pestCheckNotified", true); // Marcar como notificado
-            });
+            await notifyPestCheckNotFound(context);
+            await context.globalState.update("pestCheckNotified", true); // Marcar como notificado
         } else {
             console.log("User has already been notified about missing PestCheck.");
         }
@@ -875,7 +858,7 @@ export async function activate(context: vscode.ExtensionContext) {
             vscode.window.showInformationMessage(
                 `PestCheck is already configured at: ${pestcheckPath}`
             );
-            context.globalState.update("pestCheckNotified", true); // Marcar como notificado
+            await context.globalState.update("pestCheckNotified", true); // Marcar como notificado
         }
     }
 
@@ -905,15 +888,26 @@ export async function activate(context: vscode.ExtensionContext) {
             "PestCheck notification reset. You will be notified again if needed."
         );
     }
+    // #endregion Browse for PestCheck path
 
-    /*========================================================
-        Test function for PestCheck
-       ========================================================*/
+    /*=======================================================
+    Run PestCheck command
+    =======================================================*/
 
-    // RUN PESCHECK
-    
-    const loadDescriptionsPromise = loadDescriptions(context);
-    await loadDescriptionsPromise;
+    // #region Run PestCheck command
+
+    vscode.commands.registerCommand("pestd3code.runPestCheck", () => {
+        const activeEditor = vscode.window.activeTextEditor;
+        if (!activeEditor) {
+            vscode.window.showWarningMessage("No active file to run PestCheck.");
+            return;
+        }
+
+        runPestCheck(activeEditor.document);
+    });
+
+
+    await loadDescriptions(context);
 
     context.subscriptions.push(
         vscode.languages.registerDocumentSymbolProvider(
@@ -922,15 +916,22 @@ export async function activate(context: vscode.ExtensionContext) {
         )
     );
 
-    vscode.commands.registerCommand(
-        "pestd3code.clearDiagnostics",
-        clearDiagnostics
-    );
-    /*
-    ========================================================
-        Detect changes to .pst files and offer to reload
-    ========================================================
-    */
+    // #endregion Run PestCheck command
+
+    /*=======================================================
+    Clear diagnostics
+    =======================================================*/
+    // #region Clear diagnostics
+    vscode.commands.registerCommand("pestd3code.clearDiagnostics", () => {
+        diagnosticCollection?.clear();
+    });
+    // #endregion Clear diagnostics
+
+    /*=======================================================
+    Detect changes to .pst files and offer to reload
+    =======================================================*/
+
+    // #region Detect changes to .pst files and offer to reload
     const fileModificationTimes: Map<string, number> = new Map();
 
     // Watch for changes to all .pst files in the workspace
@@ -987,8 +988,10 @@ export async function activate(context: vscode.ExtensionContext) {
     });
     context.subscriptions.push(fileWatcher);
 
+    // #endregion Detect changes to .pst files and offer to reload
+
     /*========================================================
-        CodeLens provider for manual
+    CodeLens provider for manual
     ========================================================*/
 
     // #region CodeLens provider for manual
@@ -1027,7 +1030,7 @@ export async function activate(context: vscode.ExtensionContext) {
     //#endregion CodeLens provider for manual
 
     /*========================================================
-        Folding provider for PEST control file
+    Folding provider for PEST control file
     ========================================================*/
 
     // #region Folding provider for PEST control file
@@ -1068,8 +1071,10 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     );
 
+    // #endregion Folding provider for PEST control file
+
     /*========================================================
-        Hover provider for control data and SVD sections
+    Hover provider for control data and SVD sections
     ========================================================*/
 
     // #region Hover provider for control data and SVD sections
@@ -1418,7 +1423,7 @@ export async function activate(context: vscode.ExtensionContext) {
                                     .map((val) => `\`${val}\``)
                                     .join(", ")}\n`
                                 : "") +
-                            `- **Required:** ${variable.Mandatory === "required" ? "Yes" : "No"
+                            `- **Rquired:** ${variable.Mandatory === "required" ? "Yes" : "No"
                             }`
                         );
                     }
@@ -1559,12 +1564,10 @@ export async function activate(context: vscode.ExtensionContext) {
     //#endregion Hover provider for control data and SVD sections
 
     /*========================================================
-        CodeLens and Hover for Parameter Groups
-        and Observation Groups
+    CodeLens and Hover for Parameter Groups, Parameter Data, Observation Groups, Observation Data and Prior Information
     ========================================================*/
 
     // #region Parameter Groups CodeLens and Hover
-
     function parseParameterGroups(document: vscode.TextDocument) {
         const headers = [
             "PARGPNME",
@@ -2116,7 +2119,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // #endregion Parameter Groups CodeLens and Hover
 
     /*========================================================
-        CodeLens provider for command line and input/output sections
+    CodeLens provider for command line and input/output sections
     ========================================================*/
 
     // #region CodeLens provider for command line and input/output sections
@@ -2250,8 +2253,8 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     /*========================================================
-        CodeLens provider for bat files
-      ========================================================*/
+      CodeLens provider for bat files
+    ========================================================*/
 
     const codeLensProviderbat = vscode.languages.registerCodeLensProvider(
         { scheme: "file", pattern: "**/*.bat" },
@@ -2351,7 +2354,7 @@ export async function activate(context: vscode.ExtensionContext) {
     // #endregion CodeLens provider for command line and input/output sections
 
     /*========================================================
-        CodeLens provider for PES+
+    CodeLens provider for PEST++
     ========================================================*/
 
     // #region Hover provider for pest++ section
@@ -2386,9 +2389,6 @@ export async function activate(context: vscode.ExtensionContext) {
         }
     );
 
-    /*========================================================
-        PUTTING IT ALL TOGETHER
-    ========================================================*/
 
     context.subscriptions.push(hoverProviderPlus);
     // Escucha cambios en el editor activo
@@ -2400,13 +2400,11 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // #endregion Hover provider for pest++ section
 
-    // Listeners for changes in the active editor
-    vscode.workspace.onDidChangeTextDocument((event) => {
-        const editor = vscode.window.activeTextEditor;
-        if (editor && event.document === editor.document) {
-            //applyDecorations(editor);
-        }
-    });
+    /*========================================================
+    PUTTING IT ALL TOGETHER
+    ========================================================*/
+
+    // #region Putting it all together
 
     const disposable = vscode.commands.registerCommand(
         "pestd3code.activate",
@@ -2430,12 +2428,17 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(obsDataHoverProvider);
     context.subscriptions.push(PriorInformationCodeLensProvider);
     context.subscriptions.push(PriorInformationHoverProvider);
-    context.subscriptions.push(hoverProviderPlus); // Agregar el hover de PEST++
-
+    // #endregion Putting it all together
 }
-//#endregion Extension activation
+// #endregion MAIN EXTENSION ACTIVATION FUNCTION
 
 // This method is called when your extension is deactivated
+
 export function deactivate() {
-    console.log('PestD3Code: Extension deactivated');
+    log('The PEST extension is deactivating');
+    try {
+        outputChannel?.dispose();
+    } catch (e) {
+        console.error('Error disposing of the output channel:', e);
+    }
 }
