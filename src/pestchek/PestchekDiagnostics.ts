@@ -70,14 +70,14 @@ export function parsePestchekOutput(output: string, fileName: string): PestchekR
             currentSection = 'WARNING';
             continue;
         }
-        if (!currentSection) {continue;}
+        if (!currentSection) { continue; }
 
         // Primero intentamos detectar errores con número de línea específico
         const lineMatch = line.match(/Line\s+(\d+)\s+of\s+file\s+([^:]+):\s*(.*)/);
         if (lineMatch) {
             const lineNumber = parseInt(lineMatch[1]);
             const errorMessage = lineMatch[3];
-            
+
             results.push(createDiagnostic(
                 'ERROR',
                 errorMessage.trim(),
@@ -95,12 +95,12 @@ export function parsePestchekOutput(output: string, fileName: string): PestchekR
         if (currentSection === 'ERROR' && line.trim()) {
             let errorMessage = line;
             let j = i + 1;
-            
-            while (j < lines.length && lines[j].trim() && 
-                   !lines[j].startsWith('Cannot open') && 
-                   !lines[j].startsWith('Line') && 
-                   !lines[j].startsWith('Errors') && 
-                   !lines[j].startsWith('Warnings')) {
+
+            while (j < lines.length && lines[j].trim() &&
+                !lines[j].startsWith('Cannot open') &&
+                !lines[j].startsWith('Line') &&
+                !lines[j].startsWith('Errors') &&
+                !lines[j].startsWith('Warnings')) {
                 errorMessage += ' ' + lines[j].trim();
                 j++;
             }
@@ -110,7 +110,7 @@ export function parsePestchekOutput(output: string, fileName: string): PestchekR
             if (observationGroup) {
                 const groupName = observationGroup[1];
                 const lineNumber = findLineNumberInFile(absoluteFilePath, groupName);
-                
+
                 if (lineNumber > 0) {
                     results.push(createDiagnostic(
                         'ERROR',
