@@ -291,8 +291,7 @@ class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
                 vscode.SymbolKind.Field,
                 "",
                 new vscode.Location(document.uri, new vscode.Range(0, 0, 0, 0))
-            )
-        );
+        ));
 
         let inPestPlusSection = false; // Bandera para bloques Pest++
         let currentSymbol: vscode.SymbolInformation | null = null;
@@ -410,136 +409,111 @@ interface PestCheckError {
     description: string;
 }
 
-function parsePestCheckOutputErrors(
-    outputFilePath: string,
-    activeFilePath: string
-): PestCheckError[] {
-    const errors: PestCheckError[] = [];
-    const fileContent = fs.readFileSync(outputFilePath, "utf8");
-    const lines = fileContent.split("\n");
+async function runPestCheck(activeEditor: vscode.TextEditor, pestCheckPath: string) {
+    const activeFilePath = activeEditor.document.uri.fsPath;
+    const tempOutputPath = path.join(path.dirname(activeFilePath), "pestcheck_output.txt");
+    
+    // Bandera para alternar entre métodos (temporal durante migración)
+    const useNewMethod = false; // Cambiar a true para probar nuevo método
 
-    let currentError: PestCheckError | null = null;
-    let accumulatedLines = "";
+    try {
+        if (useNewMethod) {
+            // === NUEVO MÉTODO (en memoria) ===
+            console.log('Using new in-memory method...');
+            const content = activeEditor.document.getText();
+            const workingDirectory = path.dirname(activeFilePath);
+            const fileNameWithoutExtension = path.basename(activeFilePath, path.extname(activeFilePath));
 
-    for (const [index, line] of lines.entries()) {
-        const trimmedLine = line.trim();
-        console.log(`Processing line ${index + 1}: ${trimmedLine}`);
-
-        // Detectar "Line N of file" para iniciar un nuevo error
-        const match = trimmedLine.match(/Line (\d+) of file/);
-        if (match) {
-            const lineNumber = match[1];
-            console.log(`Match found! Line number: ${lineNumber}`);
-
-            // Finalizar el error previo (si existía) y comenzar uno nuevo
-            if (currentError) {
-                errors.push(currentError);
+            try {
+                const output = await executePestCheckInMemory(
+                    content,
+                    pestCheckPath,
+                    workingDirectory,
+                    fileNameWithoutExtension
+                );
+                await processPestCheckOutput(output, activeFilePath, activeEditor);
+            } catch (error) {
+                console.error('Error in new method, falling back to old method:', error);
+                // Fallback al método antiguo si falla
+                await executeOldMethod(activeEditor, pestCheckPath, activeFilePath, tempOutputPath);
             }
 
-            currentError = {
-                line: `Line ${lineNumber}`,
-                description: "",
-            };
-            continue;
-        }
-
-        // Acumular líneas hasta encontrar un punto aparte
-        if (trimmedLine.endsWith(".")) {
-            accumulatedLines += ` ${trimmedLine}`;
-            if (accumulatedLines.trim()) {
-                errors.push({ line: "", description: accumulatedLines.trim() });
-                accumulatedLines = "";
-            }
         } else {
-            accumulatedLines += ` ${trimmedLine}`;
+            // === MÉTODO ANTIGUO (con archivos temporales) ===
+            console.log('Using old file-based method...');
+            await executeOldMethod(activeEditor, pestCheckPath, activeFilePath, tempOutputPath);
         }
 
-        // Si estamos recolectando descripción
-        if (currentError) {
-            const descriptionPart = trimmedLine
-                .replace(/^[a-zA-Z]:\\[^\s]+|\.\/[^\s]+/g, "")
-                .trim();
-            currentError.description +=
-                (currentError.description ? " " : "") + descriptionPart;
-        }
+    } catch (error) {
+        console.error('Error executing PestCheck:', error);
+        vscode.window.showErrorMessage(`Error running PestCheck: ${error}`);
     }
-
-    // Agregar el último error procesado
-    if (currentError) {
-        errors.push(currentError);
-    }
-
-    // Agregar el último error acumulado
-    if (accumulatedLines.trim()) {
-        errors.push({ line: "", description: accumulatedLines.trim() });
-    }
-
-    // Remove the active file path from the error descriptions
-    errors.forEach((error) => {
-        error.description = error.description
-            .replace(
-                new RegExp(
-                    activeFilePath.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"),
-                    "g"
-                ),
-                ""
-            )
-            .replace(/\s+/g, " ")
-            .trim();
-    });
-
-    console.log("errors: ", errors);
-    return errors;
 }
-async function runPestCheckAndSaveOutput(): Promise<void> {
-    const activeEditor = vscode.window.activeTextEditor;
-    if (!activeEditor) {
-        vscode.window.showErrorMessage("No active file is open.");
-        return;
-    }
 
-    const activeFilePath = activeEditor.document.fileName;
-    console.log(`Active file path: ${activeFilePath}`);
+// Nuevo método usando memoria
+async function executePestCheckInMemory(
+    content: string,
+    pestCheckPath: string,
+    workingDirectory: string,
+    fileNameWithoutExtension: string
+): Promise<string> {
+    return new Promise((resolve, reject) => {
+        try {
+            const pestProcess = spawn(
+                path.basename(pestCheckPath),
+                ['-'],
+                { 
+                    cwd: workingDirectory,
+                    stdio: ['pipe', 'pipe', 'pipe'] 
+                }
+            );
 
-    if (!activeFilePath.endsWith(".pst") && !activeFilePath.endsWith(".pest")) {
-        vscode.window.showErrorMessage(
-            "The active file must be a .pst or .pest file."
-        );
-        console.warn("Invalid file extension:", activeFilePath);
-        return;
-    }
+            let output = '';
 
-    const configuration = vscode.workspace.getConfiguration("pestd3code");
-    const pestCheckPath = configuration.get<string>("pestcheckPath", "");
+            pestProcess.stdout.on('data', (data) => {
+                output += data.toString();
+                console.log(`stdout: ${data}`);
+            });
 
-    console.log(`Configured PestCheck Path: ${pestCheckPath}`);
+            pestProcess.stderr.on('data', (data) => {
+                output += data.toString();
+                console.error(`stderr: ${data}`);
+            });
 
-    if (!pestCheckPath || !fs.existsSync(pestCheckPath)) {
-        vscode.window.showErrorMessage(
-            "PestCheck executable path is not configured or invalid."
-        );
-        console.error("PestCheck executable not found:", pestCheckPath);
-        return;
-    }
+            pestProcess.on('close', (code) => {
+                console.log(`PestCheck process exited with code: ${code}`);
+                resolve(output);
+            });
 
+            pestProcess.on('error', reject);
+
+            // Escribir contenido y cerrar stdin
+            pestProcess.stdin.write(content);
+            pestProcess.stdin.end();
+
+        } catch (error) {
+            reject(error);
+        }
+    });
+}
+
+// Método antiguo (existente)
+async function executeOldMethod(
+    activeEditor: vscode.TextEditor,
+    pestCheckPath: string,
+    activeFilePath: string,
+    tempOutputPath: string
+): Promise<void> {
     const tempFilePath = path.join(
         path.dirname(activeFilePath),
         `copy_${path.basename(activeFilePath)}`
     );
-    const tempOutputPath = path.join(
-        path.dirname(activeFilePath),
-        "pestcheck_output.txt"
-    );
-    console.log(`Temporary file path: ${tempFilePath}`);
-    console.log(`Temporary output file path: ${tempOutputPath}`);
 
     try {
         // Escribir el contenido del editor en un archivo temporal
         const content = activeEditor.document.getText();
         fs.writeFileSync(tempFilePath, content);
-        console.log(
-            `Written active editor content to temporary file: ${tempFilePath}`
-        );
+        console.log(`Written active editor content to temporary file: ${tempFilePath}`);
 
         // Obtener solo el nombre del archivo sin la extensión
         const pestCheckExecutable = path.basename(pestCheckPath);
@@ -554,13 +528,13 @@ async function runPestCheckAndSaveOutput(): Promise<void> {
             [tempFileNameWithoutExtension],
             { cwd: path.dirname(tempFilePath) }
         );
+
         const writeStream = fs.createWriteStream(tempOutputPath);
         console.log("Redirecting PestCheck output to temporary file...");
 
         pestProcess.stdout.pipe(writeStream);
         pestProcess.stderr.pipe(writeStream);
 
-        // Imprimir en consola exactamente lo que está escribiendo el spawn
         pestProcess.stdout.on("data", (data) => {
             console.log(`stdout: ${data}`);
         });
@@ -581,98 +555,63 @@ async function runPestCheckAndSaveOutput(): Promise<void> {
             });
         });
 
-        // Agregar un retraso para darle tiempo al proceso de PestCheck para que termine de escribir el archivo de salida
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-
+        // Leer y procesar la salida
         if (fs.existsSync(tempOutputPath)) {
             const output = fs.readFileSync(tempOutputPath, "utf8");
-            console.log("====== PestCheck Output Start ======");
-            console.log(output);
-            console.log("====== PestCheck Output End ======");
-            // Usar el nuevo parser
-            const results = parsePestchekOutput(output, path.basename(activeFilePath));
-            console.log('Resultados del análisis:', results);
-
-            // Crear o limpiar la colección de diagnósticos
-            if (!diagnosticCollection) {
-                diagnosticCollection = vscode.languages.createDiagnosticCollection("pestCheck");
-            }
-            diagnosticCollection.clear();
-
-            // Agrupar diagnósticos por archivo
-            const diagnosticsMap = new Map<string, vscode.Diagnostic[]>();
-            
-            results.forEach(result => {
-                const filePath = result.file.startsWith('/') || result.file.includes(':') 
-                    ? result.file 
-                    : path.join(path.dirname(activeFilePath), result.file);
-                const uri = vscode.Uri.file(filePath);
-                const diagnostics = diagnosticsMap.get(uri.toString()) || [];
-                diagnostics.push(result.diagnostic);
-                diagnosticsMap.set(uri.toString(), diagnostics);
-            });
-
-            // Aplicar los diagnósticos a cada archivo
-            diagnosticsMap.forEach((diagnostics, uriString) => {
-                diagnosticCollection!.set(vscode.Uri.parse(uriString), diagnostics);
-            });
-
-            // Verificar si hay errores
-            const hasErrors = results.some(r => r.diagnostic.severity === vscode.DiagnosticSeverity.Error);
-            if (!hasErrors) {
-                vscode.window.showInformationMessage("PestCheck completado exitosamente.");
-            } else {
-                vscode.window.showErrorMessage("PestCheck completado con errores.");
-            }
+            await processPestCheckOutput(output, activeFilePath, activeEditor);
         }
 
-        const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-        vscode.window.showErrorMessage('No active editor found!');
-        return;
-    }
-
-/* 
-    const firstLineTextDecorator = vscode.window.createTextEditorDecorationType({
-        after: {
-            contentText: ' PESTCHECK Version 18.25. Watermark Numerical Computing.', // Texto que aparecerá a la derecha
-            color: '#FFA500', // Color del texto (naranja para destacar)
-            fontWeight: 'bold', // Negrita
-            margin: '0 0 0 10px', // Espaciado hacia la derecha
-        }
-    });
-
-    const highlightFirstLineWithText = (editor: vscode.TextEditor) => {
-        // Define el rango para la primera línea
-        const firstLineRange = new vscode.Range(
-            new vscode.Position(0, 0), // Inicio de la línea 1
-            new vscode.Position(0, editor.document.lineAt(0).text.length) // Fin de la línea 1
-        );
-    
-        // Aplica el decorador solo a la primera línea
-        editor.setDecorations(firstLineTextDecorator, [firstLineRange]);
-    };
-    
-    if (!editor) {
-        vscode.window.showErrorMessage('No active editor found!');
-        return;
-    }
-    highlightFirstLineWithText(editor); */
-    //vscode.window.showInformationMyessage('PESTCHECK annotation added to the first line!');
-        // Borrar el archivo temporal
+    } finally {
+        // Limpieza de archivos temporales
         if (fs.existsSync(tempFilePath)) {
             fs.unlinkSync(tempFilePath);
             console.log(`Temporary file deleted: ${tempFilePath}`);
         }
-
-        // Borrar el archivo de salida temporal
         if (fs.existsSync(tempOutputPath)) {
             fs.unlinkSync(tempOutputPath);
             console.log(`Temporary output file deleted: ${tempOutputPath}`);
         }
-    } catch (error) {
-        console.error("Error executing PestCheck:", error);
-        vscode.window.showErrorMessage(`Error running PestCheck: ${error}`);
+    }
+}
+
+// Procesar salida (común para ambos métodos)
+async function processPestCheckOutput(
+    output: string,
+    activeFilePath: string,
+    activeEditor: vscode.TextEditor
+): Promise<void> {
+    console.log('====== PestCheck Output Start ======');
+    console.log(output);
+    console.log('====== PestCheck Output End ======');
+
+    const results = parsePestchekOutput(output, activeFilePath);
+    
+    if (!diagnosticCollection) {
+        diagnosticCollection = vscode.languages.createDiagnosticCollection('pestCheck');
+    }
+    diagnosticCollection.clear();
+
+    const diagnosticsMap = new Map<string, vscode.Diagnostic[]>();
+    
+    for (const result of await results) {
+        const filePath = result.file.startsWith('/') || result.file.includes(':') 
+            ? result.file 
+            : path.join(path.dirname(activeFilePath), result.file);
+        const uri = vscode.Uri.file(filePath);
+        const diagnostics = diagnosticsMap.get(uri.toString()) || [];
+        diagnostics.push(result.diagnostic);
+        diagnosticsMap.set(uri.toString(), diagnostics);
+    }
+
+    diagnosticsMap.forEach((diagnostics, uriString) => {
+        diagnosticCollection!.set(vscode.Uri.parse(uriString), diagnostics);
+    });
+
+    const hasErrors = (await results).some(result => result.diagnostic.severity === vscode.DiagnosticSeverity.Error);
+    if (!hasErrors) {
+        vscode.window.showInformationMessage('PestCheck completado exitosamente.');
+    } else {
+        vscode.window.showErrorMessage('PestCheck completado con errores.');
     }
 }
 
@@ -896,10 +835,14 @@ export async function activate(context: vscode.ExtensionContext) {
             }
         }),
         vscode.commands.registerCommand("pestd3code.runPestCheck", () => {
-            runPestCheckAndSaveOutput();
+            const editor = vscode.window.activeTextEditor;
+            if (editor) {
+                runPestCheck(editor, pestcheckPath);
+            } else {
+                vscode.window.showErrorMessage('No active text editor found');
+            }
         })
     );
-
 
     console.log(
         "Commands registered: autoSetPestCheckPath, findPestCheck, runPestCheck"
@@ -2489,23 +2432,6 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(PriorInformationHoverProvider);
     context.subscriptions.push(hoverProviderPlus); // Agregar el hover de PEST++
 
-    // Eliminar las suscripciones individuales redundantes
-    /*context.subscriptions.push(manualCodeLensProvider);
-      context.subscriptions.push(disposable);
-      context.subscriptions.push(hoverProvider);
-      disposables.push(foldingProvider);
-      context.subscriptions.push(handleClick);
-      context.subscriptions.push(codeLensProvider);
-      context.subscriptions.push(parameterGroupsCodeLensProvider);
-      context.subscriptions.push(parameterDataCodeLensProvider);
-      context.subscriptions.push(parameterGroupsHoverProvider);
-      context.subscriptions.push(parameterDataHoverProvider);
-      context.subscriptions.push(obsGroupsCodeLensProvider);
-      context.subscriptions.push(obsGroupsHoverProvider);
-      context.subscriptions.push(obsDataCodeLensProvider);
-      context.subscriptions.push(obsDataHoverProvider);
-      context.subscriptions.push(PriorInformationCodeLensProvider);
-      context.subscriptions.push(PriorInformationHoverProvider);*/
 }
 //#endregion Extension activation
 

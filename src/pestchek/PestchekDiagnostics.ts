@@ -50,80 +50,86 @@ function getOriginalPstFile(copyFile: string): string {
 }
 
 export function parsePestchekOutput(output: string, fileName: string): PestchekResult[] {
+    const absoluteFilePath = path.isAbsolute(fileName) ? fileName : path.resolve(fileName);
+    console.log(`Procesando archivo: ${absoluteFilePath}`);
+
     const results: PestchekResult[] = [];
     let currentSection: 'ERROR' | 'WARNING' | null = null;
-
-    // Agregar el warning inicial
-    results.push(createDiagnostic(
-        'WARNING',
-        'PESTCHEK Version 18.25. Watermark Numerical Computing.',
-        {
-            start: { line: 0, character: 0 },
-            end: { line: 0, character: 0 }
-        },
-        fileName,
-    ));
 
     const lines = output.split('\n').map(l => l.trim());
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        console.log(`Procesando línea ${i}: ${line}`);
 
         if (line.startsWith('PESTCHEK Version')) {
-            console.log('Encontrada versión de PESTCHEK, continuando...');
             continue;
         } else if (line.startsWith('Errors ----->')) {
-            console.log('Sección de errores encontrada');
             currentSection = 'ERROR';
             continue;
         } else if (line.startsWith('Warnings ----->')) {
-            console.log('Sección de advertencias encontrada');
             currentSection = 'WARNING';
             continue;
         }
+        if (!currentSection) {continue;}
 
-        if (!currentSection) continue;
-
-        const lineMatch = line.match(/Line\s+(\d+)\s+of\s+(?:instruction\s+)?file\s+([^:]+):/);
-        
+        // Primero intentamos detectar errores con número de línea específico
+        const lineMatch = line.match(/Line\s+(\d+)\s+of\s+file\s+([^:]+):\s*(.*)/);
         if (lineMatch) {
-            const reportedLineNumber = parseInt(lineMatch[1]);
-            let file = lineMatch[2];
-            console.log(`Línea reportada: ${reportedLineNumber}, Archivo: ${file}`);
+            const lineNumber = parseInt(lineMatch[1]);
+            const errorMessage = lineMatch[3];
             
-            // Convertir la ruta del archivo si es necesario
-            file = getOriginalPstFile(file);
-            console.log(`Archivo convertido: ${file}`);
-            
-            let message = line;
-            
-            // Buscar el número de línea real en el archivo
-            const actualLineNumber = findLineNumberInFile(file, message);
-            console.log(`Archivo: ${file}, Línea reportada: ${reportedLineNumber}, Línea encontrada: ${actualLineNumber}`);
-
-            // Si el mensaje continúa en la siguiente línea
-            while (i + 1 < lines.length && !lines[i + 1].match(/Line\s+\d+/) && lines[i + 1].trim()) {
-                i++;
-                message += ' ' + lines[i].trim();
-                console.log(`Mensaje extendido: ${message}`);
-            }
-            const lineNumber = actualLineNumber || reportedLineNumber;
-            console.log(`Número de línea usado: ${lineNumber}`);
             results.push(createDiagnostic(
-                currentSection,
-                message,
+                'ERROR',
+                errorMessage.trim(),
                 {
                     start: { line: lineNumber - 1, character: 0 },
                     end: { line: lineNumber - 1, character: Number.MAX_VALUE }
                 },
-                file,
-                currentSection === 'ERROR' ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning
+                absoluteFilePath,
+                DiagnosticSeverity.Error
             ));
-            console.log(`Diagnóstico creado: ${message}`);
+            continue;
+        }
+
+        // Si no es un error con número de línea, procesamos errores con grupos de observación
+        if (currentSection === 'ERROR' && line.trim()) {
+            let errorMessage = line;
+            let j = i + 1;
+            
+            while (j < lines.length && lines[j].trim() && 
+                   !lines[j].startsWith('Cannot open') && 
+                   !lines[j].startsWith('Line') && 
+                   !lines[j].startsWith('Errors') && 
+                   !lines[j].startsWith('Warnings')) {
+                errorMessage += ' ' + lines[j].trim();
+                j++;
+            }
+            i = j - 1;
+
+            const observationGroup = errorMessage.match(/"([^"]+)"/);
+            if (observationGroup) {
+                const groupName = observationGroup[1];
+                const lineNumber = findLineNumberInFile(absoluteFilePath, groupName);
+                
+                if (lineNumber > 0) {
+                    results.push(createDiagnostic(
+                        'ERROR',
+                        errorMessage.trim(),
+                        {
+                            start: { line: lineNumber - 1, character: 0 },
+                            end: { line: lineNumber - 1, character: Number.MAX_VALUE }
+                        },
+                        absoluteFilePath,
+                        DiagnosticSeverity.Error
+                    ));
+                }
+            }
+
+            if (j < lines.length && lines[j].startsWith('Cannot open')) {
+                i = j - 1;
+            }
         }
     }
-
     return results;
 }
 
