@@ -637,6 +637,15 @@ export async function activate(
     // PESTCHECK FUNCTION with no copy of the file
     async function runPestCheck(document: vscode.TextDocument): Promise<void> {
         try {
+            const workspaceRoot = vscode.workspace.workspaceFolders?.[0].uri.fsPath;
+            if (!workspaceRoot) {
+                throw new Error('No workspace folder found');
+            }
+
+            // Get relative path without leading slash
+            const relativePath = getRelativePath(document.fileName, workspaceRoot);
+            console.log('Processing file:', relativePath);
+
             const filePath = document.uri.fsPath;
             const fileNameWithoutExt = path.parse(filePath).name;
             const fileDir = path.dirname(filePath);
@@ -685,9 +694,10 @@ export async function activate(
                 }
             }
             try {
+                const skipWarnings = configuration.get<boolean>("skipWarnings", false);
                 const pestProcess = spawn(
                     pestCheckPath,
-                    [`${fileNameWithoutExt}_temp`, '/s'],
+                    [`${fileNameWithoutExt}_temp`, ...(skipWarnings ? ['/s'] : [])],
                     { cwd: fileDir }
                 );
                 let output = '';
@@ -699,17 +709,34 @@ export async function activate(
                 });
                 pestProcess.on('close', (code) => {
                     console.log('====== PestCheck Output Start ======');
-                    console.log('Raw output:');
-                    console.log(output);
-                    console.log('====== PestCheck Output End ======');
-
+                    console.log('Raw output:', output);
                     console.log(`PestCheck process exited with code: ${code}`);
 
-
-                    // USE THE NEW PARSER
                     const results = parsePestchekOutput(output);
 
+                    // Group diagnostics by file
+                    const diagnosticsByFile = new Map<string, vscode.Diagnostic[]>();
+                    
+                    results.forEach(result => {
+                        const filePath = result.file || document.uri.fsPath;
+                        if (!diagnosticsByFile.has(filePath)) {
+                            diagnosticsByFile.set(filePath, []);
+                        }
+                        diagnosticsByFile.get(filePath)?.push(result.diagnostic);
+                    });
 
+                    // Clear and set diagnostics for each file
+                    if (!diagnosticCollection) {
+                        diagnosticCollection = vscode.languages.createDiagnosticCollection("pestCheck");
+                    }
+                    diagnosticCollection.clear();
+
+                    // Set diagnostics for each file
+                    diagnosticsByFile.forEach((diagnostics, filePath) => {
+                        const uri = vscode.Uri.file(filePath);
+                        diagnosticCollection?.set(uri, diagnostics);
+                        console.log(`Set ${diagnostics.length} diagnostics for file: ${filePath}`);
+                    });
 
                     if (!rawPanel) {
                         rawPanel = vscode.window.createWebviewPanel(
@@ -777,7 +804,7 @@ export async function activate(
                         header: '═══════════════════════════════════════',
                         section: '───────────────────────────────────────',
                         item: '─'.repeat(40), // Cambiado de puntos a guiones largos
-                        footer: '═══════════════════════════════════════'
+                        footer: '��══════════════════════════════════════'
                     };
 
                     // Generar el encabezado principal
@@ -869,15 +896,6 @@ export async function activate(
 `;
 
 
-
-                    // Actualizar diagnósticos
-                    if (!diagnosticCollection) {
-                        diagnosticCollection =
-                            vscode.languages.createDiagnosticCollection("pestCheck");
-                    }
-                    diagnosticCollection.clear();
-                    const diagnostics = results.map(result => result.diagnostic);
-                    diagnosticCollection.set(document.uri, diagnostics);
 
                     // Clean up temporary file after PestCheck finishes
                     fs.promises.unlink(tempFilePath)
@@ -1633,6 +1651,8 @@ export async function activate(
                         `La palabra "${word}" ha aparecido ${wordOccurrences} veces antes del cursor.`
                     );
                     console.log("Indice de la linea " + indexline);
+
+
 
 
 
@@ -2689,4 +2709,10 @@ export async function activate(
 // This method is called when your extension is deactivated
 
 export function deactivate() {
+}
+
+function getRelativePath(filePath: string, workspaceRoot: string): string {
+    // Remove any leading slash and normalize path
+    const normalizedPath = filePath.replace(/^[\/\\]+/, '');
+    return path.relative(workspaceRoot, normalizedPath);
 }

@@ -32,12 +32,17 @@
     },
     "configuration": {
       "type": "object",
-      "title": "PestD3code Settings",
+      "title": "PestD3Code",
       "properties": {
         "pestd3code.pestcheckPath": {
           "type": "string",
           "default": "",
           "description": "Path to the Pestchek. Use the 'Try to autoset Pestcheck' or 'Set Pestcheck Path Manually' commands to browse for the file."
+        },
+        "pestd3code.skipWarnings": {
+          "type": "boolean",
+          "default": false,
+          "description": "Skip warnings and template/instruction/coverage matrix file checking (/s flag)"
         }
       }
     },

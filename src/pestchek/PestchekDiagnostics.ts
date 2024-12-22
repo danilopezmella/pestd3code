@@ -1,17 +1,43 @@
 import { PestchekResult } from './types/PestchekTypes';
-import { Diagnostic, DiagnosticSeverity, Range } from 'vscode';
+import { Diagnostic, DiagnosticSeverity, Range, Uri, workspace } from 'vscode';
+import path from 'path';
 
 interface DiagnosticInfo {
     start: { line: number; character: number };
     end: { line: number; character: number };
 }
 
+function resolveFilePath(filePath: string, workspaceRoot: string): string {
+    console.log('Resolving file path:', {
+        filePath,
+        workspaceRoot,
+        isAbsolute: path.isAbsolute(filePath)
+    });
+    
+    if (path.isAbsolute(filePath)) {
+        return filePath;
+    }
+    return path.resolve(workspaceRoot, filePath);
+}
+
 function createDiagnostic(
     type: 'ERROR' | 'WARNING',
     message: string,
     range?: DiagnosticInfo,
-    severity?: DiagnosticSeverity
+    severity?: DiagnosticSeverity,
+    file?: string
 ): PestchekResult {
+    const workspaceRoot = workspace.workspaceFolders?.[0]?.uri.fsPath || process.cwd();
+    const resolvedFile = file ? resolveFilePath(file, workspaceRoot) : '';
+
+    console.log('Creating diagnostic:', {
+        type,
+        message,
+        originalFile: file,
+        resolvedFile,
+        workspaceRoot
+    });
+
     const diagnosticRange = range || {
         start: { line: 0, character: 0 },
         end: { line: 0, character: 100 }
@@ -19,7 +45,7 @@ function createDiagnostic(
 
     return {
         type: type,
-        file: '',
+        file: resolvedFile,
         diagnostic: new Diagnostic(
             new Range(
                 diagnosticRange.start.line,
@@ -38,42 +64,31 @@ export function parsePestchekOutput(output: string): PestchekResult[] {
     let currentSection: 'ERROR' | 'WARNING' | null = null;
     let currentMessage: string | null = null;
     let currentLineNumber: number | null = null;
-    let pendingMessage: string | null = null;
 
     const lines = output.split('\n').map(l => l.trim());
-    console.log('Procesando líneas:', lines);
+    console.log('Processing lines:', lines);
 
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
 
-        if (line.startsWith('PESTCHEK Version')) {
+        // Skip empty lines and version info
+        if (!line || line.startsWith('PESTCHEK Version')) {
             continue;
-        } else if (line.startsWith('Errors ----->')) {
+        } else if (line === 'Errors ----->') {
             currentSection = 'ERROR';
             continue;
-        } else if (line.startsWith('Warnings ----->')) {
+        } else if (line === 'Warnings ----->') {
             currentSection = 'WARNING';
             continue;
         }
-        
-        if (!currentSection) { continue; }
-        
-  // Add this new condition before the lineMatch check
-  if (line.startsWith('Cannot open')) {
-    results.push(createDiagnostic(
-        'ERROR',
-        line + (lines[i + 1]?.trim().startsWith('observation group') ? ' ' + lines[++i].trim() : ''),
-        {
-            start: { line: 0, character: 0 },
-            end: { line: 0, character: Number.MAX_VALUE }
+
+        if (!currentSection || line === 'No errors encountered.') { 
+            continue; 
         }
-    ));
-    continue;
-}
-        // Detectar inicio de un nuevo error con número de línea
-        const lineMatch = line.match(/Line\s+(\d+)\s+of\s+file\s+([^:]+):\s*(.*)/);
+
+        const lineMatch = line.match(/Line\s+(\d+)\s+of\s+file\s+([^:]+):/);
         if (lineMatch) {
-            // Si teníamos un mensaje pendiente, lo agregamos
+            // Send pending message if exists
             if (currentMessage && currentSection) {
                 results.push(createDiagnostic(
                     currentSection,
@@ -85,22 +100,79 @@ export function parsePestchekOutput(output: string): PestchekResult[] {
                 ));
             }
 
-            // Iniciar nuevo mensaje
+            // Start new message
             currentLineNumber = parseInt(lineMatch[1]);
-            currentMessage = lineMatch[3];
+            currentMessage = line.split(':')[1]?.trim() || '';
+            
+            // Accumulate additional lines while they're not new errors
+            while (i + 1 < lines.length && 
+                   lines[i + 1].trim() && 
+                   !lines[i + 1].match(/Line\s+\d+/) &&
+                   !lines[i + 1].startsWith('Errors') &&
+                   !lines[i + 1].startsWith('Warnings')) {
+                currentMessage += ' ' + lines[++i].trim();
+            }
             continue;
         }
 
-        // Acumular líneas adicionales al mensaje actual
+        // Handle instruction file errors
+        const instructionMatch = line.match(/Line\s+(\d+)\s+of\s+instruction\s+file\s+([^:]+):/);
+        if (instructionMatch) {
+            console.log('Found instruction file error:', line);
+            const lineNum = parseInt(instructionMatch[1]);
+            const insFile = instructionMatch[2];
+            let message = line.split(':')[1]?.trim() || '';
+
+            // Accumulate multiline message
+            while (i + 1 < lines.length && 
+                   lines[i + 1].trim() && 
+                   !lines[i + 1].match(/Line\s+\d+/) &&
+                   !lines[i + 1].startsWith('Errors') &&
+                   !lines[i + 1].startsWith('Warnings')) {
+                message += ' ' + lines[++i].trim();
+            }
+
+            console.log('Creating diagnostic for instruction file:', {
+                lineNum,
+                insFile,
+                message
+            });
+
+            results.push(createDiagnostic(
+                'ERROR',
+                message.trim(),
+                {
+                    start: { line: lineNum - 1, character: 0 },
+                    end: { line: lineNum - 1, character: Number.MAX_VALUE }
+                },
+                undefined,
+                insFile
+            ));
+            continue;
+        }
+
+        // Accumulate additional lines to current message
         if (currentMessage && line.trim() && 
             !line.startsWith('Cannot open') &&
             !line.startsWith('Errors') &&
             !line.startsWith('Warnings')) {
             currentMessage += ' ' + line.trim();
         }
+
+        // Handle "Cannot open" errors
+        if (line.startsWith('Cannot open')) {
+            results.push(createDiagnostic(
+                'ERROR',
+                line + (lines[i + 1]?.trim().startsWith('observation group') ? ' ' + lines[++i].trim() : ''),
+                {
+                    start: { line: 0, character: 0 },
+                    end: { line: 0, character: Number.MAX_VALUE }
+                }
+            ));
+        }
     }
 
-    // No olvidar el último mensaje si existe
+    // Don't forget last message if exists
     if (currentMessage && currentSection) {
         results.push(createDiagnostic(
             currentSection,
@@ -112,6 +184,6 @@ export function parsePestchekOutput(output: string): PestchekResult[] {
         ));
     }
 
-    console.log('Resultados del parsing:', results);
+    console.log('Parsing results:', results);
     return results;
 } 

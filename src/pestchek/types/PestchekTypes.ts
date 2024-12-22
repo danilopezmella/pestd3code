@@ -1,8 +1,7 @@
 import { Diagnostic, DiagnosticSeverity, Range } from 'vscode';
 
 export interface PestchekResult {
+    type: 'ERROR' | 'WARNING';
     file: string;
     diagnostic: Diagnostic;
-    type: 'ERROR' | 'WARNING' | 'INFO' | 'HINT';
-    diagnosticInfo?: 0 | 1 | 2 | 3;
 }
