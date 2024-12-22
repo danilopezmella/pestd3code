@@ -1,0 +1,97 @@
+{
+  "rules": [
+    {
+      "description": "Mantener contexto de lo ya propuesto y evitar repeticiones.",
+      "action": "track_previous_proposals",
+      "criteria": ["review_conversation_history", "validate_against_previous_responses"],
+      "output": "avoid_duplicate_suggestions",
+      "confirmationMessage": "Esta sugerencia actual no se ha propuesto antes en nuestra conversación histórica."
+    },
+    {
+      "description": "Responder siempre en español, pero escribir todo el código y comentarios en inglés.",
+      "action": "enforce_language_rules",
+      "responseLanguage": "es",
+      "codeLanguage": "en"
+    },
+    {
+      "description": "Incluir console logs para la mayoría de las tareas.",
+      "action": "insert_console_logs",
+      "criteria": ["log_major_tasks"],
+      "output": "include_logs"
+    },
+    {
+      "description": "Modificar el código lo menos posible y avanzar paso a paso.",
+      "action": "minimize_code_changes",
+      "criteria": ["preserve_existing_code", "step_by_step_modifications"]
+    },
+    {
+      "description": "Actuar como un diseñador senior de extensiones para Visual Studio Code.",
+      "action": "apply_senior_practices",
+      "criteria": ["use_best_practices", "recommend_design_patterns"]
+    },
+    {
+      "description": "Indicar paso a paso qué propone y qué entendió de lo solicitado.",
+      "action": "provide_step_by_step_plan",
+      "criteria": ["confirm_understanding", "propose_step_by_step"]
+    },
+    {
+      "description": "Explicar detalladamente la lógica detrás de cada propuesta.",
+      "action": "explain_logic_in_detail",
+      "criteria": ["include_detailed_explanations"]
+    },
+    {
+      "description": "Intentar verificar si el código tiene errores utilizando ESLint.",
+      "action": "check_code_with_eslint",
+      "criteria": ["validate_code_with_eslint"]
+    },
+    {
+      "description": "Generar reglas de parseo de manera acumulativa y casos sobre casos para no perder posibles opciones.",
+      "action": "generate_cumulative_parsing_rules",
+      "criteria": ["build_on_existing_cases", "preserve_previous_cases"]
+    },
+    {
+      "description": "Evitar sugerencias genéricas y alinear con el código existente.",
+      "action": "avoid_generic_suggestions",
+      "criteria": ["align_with_existing_code"]
+    },
+    {
+      "description": "Proveer código completo y detallado, evitando el tipo 'any' en TypeScript.",
+      "action": "enforce_strong_typing",
+      "criteria": ["no_any_type"],
+      "output": "detailed_and_complete_code"
+    },
+    {
+      "description": "Leer y validar el código base antes de proponer sugerencias.",
+      "action": "validate_codebase_before_suggestions",
+      "criteria": ["review_codebase", "ensure_context_alignment"]
+    },
+    {
+      "description": "Asegurar alineación con el stack tecnológico del proyecto.",
+      "action": "ensure_stack_alignment",
+      "criteria": [
+        "Vercel",
+        "Next.js 14",
+        "TypeScript",
+        "Drizzle ORM",
+        "Supabase",
+        "NextAuth V5",
+        "Turborepo",
+        "Shadcn/ui",
+        "Sentry",
+        "PostHog",
+        "Tailwind CSS",
+        "Resend",
+        "React Email",
+        "React",
+        "Zod",
+        "ESLint and Prettier",
+        "pnpm"
+      ]
+    },
+    {
+      "description": "Proveer código concreto en lugar de bloques con numeración.",
+      "action": "provide_concrete_code",
+      "criteria": ["avoid_line_number_references"]
+    }
+  ]
+}

@@ -36,6 +36,8 @@ function createDiagnostic(
 export function parsePestchekOutput(output: string): PestchekResult[] {
     const results: PestchekResult[] = [];
     let currentSection: 'ERROR' | 'WARNING' | null = null;
+    let currentMessage: string | null = null;
+    let currentLineNumber: number | null = null;
 
     const lines = output.split('\n').map(l => l.trim());
     console.log('Procesando líneas:', lines);
@@ -52,51 +54,49 @@ export function parsePestchekOutput(output: string): PestchekResult[] {
             currentSection = 'WARNING';
             continue;
         }
+        
         if (!currentSection) { continue; }
 
-        // Detectar errores con número de línea específico
+        // Detectar inicio de un nuevo error con número de línea
         const lineMatch = line.match(/Line\s+(\d+)\s+of\s+file\s+([^:]+):\s*(.*)/);
         if (lineMatch) {
-            const lineNumber = parseInt(lineMatch[1]);
-            const errorMessage = lineMatch[3];
+            // Si teníamos un mensaje pendiente, lo agregamos
+            if (currentMessage && currentSection) {
+                results.push(createDiagnostic(
+                    currentSection,
+                    currentMessage.trim(),
+                    currentLineNumber ? {
+                        start: { line: currentLineNumber - 1, character: 0 },
+                        end: { line: currentLineNumber - 1, character: Number.MAX_VALUE }
+                    } : undefined
+                ));
+            }
 
-            results.push(createDiagnostic(
-                currentSection,
-                errorMessage.trim(),
-                {
-                    start: { line: lineNumber - 1, character: 0 },
-                    end: { line: lineNumber - 1, character: Number.MAX_VALUE }
-                },
-                currentSection === 'ERROR' ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning
-            ));
+            // Iniciar nuevo mensaje
+            currentLineNumber = parseInt(lineMatch[1]);
+            currentMessage = lineMatch[3];
             continue;
         }
 
-        // Procesar otros mensajes de error/warning
-        if (line.trim()) {
-            let message = line;
-            let j = i + 1;
-
-            // Concatenar líneas adicionales del mismo mensaje
-            while (j < lines.length && lines[j].trim() &&
-                !lines[j].startsWith('Cannot open') &&
-                !lines[j].startsWith('Line') &&
-                !lines[j].startsWith('Errors') &&
-                !lines[j].startsWith('Warnings')) {
-                message += ' ' + lines[j].trim();
-                j++;
-            }
-            i = j - 1;
-
-            if (message.trim()) {
-                results.push(createDiagnostic(
-                    currentSection,
-                    message.trim(),
-                    undefined,
-                    currentSection === 'ERROR' ? DiagnosticSeverity.Error : DiagnosticSeverity.Warning
-                ));
-            }
+        // Acumular líneas adicionales al mensaje actual
+        if (currentMessage && line.trim() && 
+            !line.startsWith('Cannot open') &&
+            !line.startsWith('Errors') &&
+            !line.startsWith('Warnings')) {
+            currentMessage += ' ' + line.trim();
         }
+    }
+
+    // No olvidar el último mensaje si existe
+    if (currentMessage && currentSection) {
+        results.push(createDiagnostic(
+            currentSection,
+            currentMessage.trim(),
+            currentLineNumber ? {
+                start: { line: currentLineNumber - 1, character: 0 },
+                end: { line: currentLineNumber - 1, character: Number.MAX_VALUE }
+            } : undefined
+        ));
     }
 
     console.log('Resultados del parsing:', results);

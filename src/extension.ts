@@ -511,141 +511,15 @@ async function browseForPestCheckPath() {
 let timeout: NodeJS.Timeout | undefined;
 let diagnosticCollection: vscode.DiagnosticCollection | undefined;
 
-// PESTCHECK FUNCTION with no copy of the file
-async function runPestCheck(document: vscode.TextDocument): Promise<void> {
-    const filePath = document.uri.fsPath;
-    const fileNameWithoutExt = path.parse(filePath).name;
-    const fileDir = path.dirname(filePath);
-    console.log(`Running PestCheck for: ${fileNameWithoutExt}`);
-    const configuration = vscode.workspace.getConfiguration("pestd3code");
-    let pestCheckPath = configuration.get<string>("pestcheckPath", "");
-    if (!pestCheckPath || !fs.existsSync(pestCheckPath)) {
-        vscode.window.showWarningMessage("PestCheck executable path is not configured or invalid.");
-        return;
-    }
-    try {
-        const pestProcess = spawn(
-            pestCheckPath,
-            [fileNameWithoutExt],
-            { cwd: fileDir }
-        );
-        let output = '';
-        pestProcess.stdout.on('data', (data) => {
-            output += data.toString();
-        });
-        pestProcess.stderr.on('data', (data) => {
-            output += data.toString();
-        });
-        pestProcess.on('close', (code) => {
-            console.log('====== PestCheck Output Start ======');
-            console.log('Raw output:');
-            console.log(output);
-            console.log('====== PestCheck Output End ======');
-
-            console.log(`PestCheck process exited with code: ${code}`);
-
-
-            // USE THE NEW PARSER
-            const results = parsePestchekOutput(output);
-
-
-            // Limpiar el panel de salida
-            let outputChannel: vscode.OutputChannel;
-            outputChannel = vscode.window.createOutputChannel('PestCheck Results');
-            outputChannel.clear();
-            outputChannel.show(true); // true = preservar foco
-
-            // Definir el mapeo de severidades
-            const severityMap = {
-                0: { text: 'Error', icon: '🔴' },
-                1: { text: 'Warning', icon: '⚠️' },
-                2: { text: 'Information', icon: 'ℹ️' },
-                3: { text: 'Hint', icon: '💡' }
-            };
-            // Definir los encabezados de sección
-            const severityHeaders = {
-                'ERROR': '🔴 ERRORS',
-                'WARNING': '⚠️ WARNINGS'
-            };
-
-            const decorativeSeparators = {
-                header: '🔸 ═══════════════════════════════════════ 🔸',
-                section: '🔹 ─────────────────────────────────────── 🔹',
-                item: '┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄',
-                footer: '🔸 ═══════════════════════════════════════ 🔸'
-            };
-
-
-
-
-
-
-
-
-            outputChannel.appendLine(decorativeSeparators.header);
-            outputChannel.appendLine('             🔍 PestCheck Results');
-            outputChannel.appendLine(decorativeSeparators.header);
-            outputChannel.appendLine('');
-            const errorResults = results.filter(r => r.type === 'ERROR');
-            const warningResults = results.filter(r => r.type === 'WARNING');
-            if (errorResults.length > 0) {
-                outputChannel.appendLine(severityHeaders['ERROR']);
-                outputChannel.appendLine(decorativeSeparators.section);
-                errorResults.forEach(result => {
-                    const severity = severityMap[result.diagnostic.severity as keyof typeof severityMap];
-                    outputChannel.appendLine(`${severity.icon} Severity: ${severity.text}`);
-                    outputChannel.appendLine(`📍 Line: ${result.diagnostic.range.start.line + 1}`);
-                    outputChannel.appendLine(`💬 Message: ${result.diagnostic.message}`);
-                    outputChannel.appendLine(decorativeSeparators.item);
-                });
-                outputChannel.appendLine('');
-            }
-            if (warningResults.length > 0) {
-                outputChannel.appendLine(severityHeaders['WARNING']);
-                outputChannel.appendLine(decorativeSeparators.section);
-                warningResults.forEach(result => {
-                    const severity = severityMap[result.diagnostic.severity as keyof typeof severityMap];
-                    outputChannel.appendLine(`${severity.icon} Severity: ${severity.text}`);
-                    outputChannel.appendLine(`📍 Line: ${result.diagnostic.range.start.line + 1}`);
-                    outputChannel.appendLine(`💬 Message: ${result.diagnostic.message}`);
-                    outputChannel.appendLine(decorativeSeparators.item);
-                });
-                outputChannel.appendLine('');
-            }
-            outputChannel.appendLine(decorativeSeparators.footer);
-            outputChannel.appendLine(`📊 Summary: ${errorResults.length} errors, ${warningResults.length} warnings`);
-            outputChannel.appendLine('');
-            outputChannel.appendLine('💡 Keyboard shortcuts:');
-            outputChannel.appendLine('   • Ctrl+Shift+M to view Problems Panel');
-            outputChannel.appendLine('   • Ctrl+Shift+U to return to this Output Panel');
-            outputChannel.appendLine(decorativeSeparators.footer);
-
-
-            // Actualizar diagnósticos
-            if (!diagnosticCollection) {
-                diagnosticCollection =
-                    vscode.languages.createDiagnosticCollection("pestCheck");
-            }
-            diagnosticCollection.clear();
-            const diagnostics = results.map(result => result.diagnostic);
-            diagnosticCollection.set(document.uri, diagnostics);
-        });
-    } catch (error) {
-        console.error("Error executing PestCheck:", error);
-        vscode.window.showWarningMessage(`Error running PestCheck: ${error}`);
-    }
-}
-
-function triggerPestCheck(document: vscode.TextDocument) {
-    if (timeout) {
-        clearTimeout(timeout);
-    }
-
-    timeout = setTimeout(() => {
-        runPestCheck(document);
-    }, 1000); // Espera 1 segundo después del último cambio
-}
-
+// Limpiar el panel de salida
+let outputChannel: vscode.OutputChannel;
+outputChannel = vscode.window.createOutputChannel('PestCheck Results');
+let rawOutputChannel: vscode.OutputChannel;
+rawOutputChannel = vscode.window.createOutputChannel('PestCheck Raw Output');
+outputChannel.clear();
+rawOutputChannel.clear();
+outputChannel.show(true);
+let rawPanel: vscode.WebviewPanel | undefined;
 // #endregion RUN PESTCHEK. The good stuff ends here
 
 /*=======================================================
@@ -659,14 +533,202 @@ export async function activate(
     context: vscode.ExtensionContext
 ): Promise<void> {
 
-    context.subscriptions.push(
-        vscode.workspace.onDidChangeTextDocument(event => {
-            const document = event.document;
-            if (document.fileName.endsWith('.pst') || document.fileName.endsWith('.pest')) {
-                triggerPestCheck(document);
+
+
+    // true = preservar foco
+    // PESTCHECK FUNCTION with no copy of the file
+    async function runPestCheck(document: vscode.TextDocument): Promise<void> {
+        try {
+            const filePath = document.uri.fsPath;
+            const fileNameWithoutExt = path.parse(filePath).name;
+            const fileDir = path.dirname(filePath);
+            const tempFilePath = path.join(fileDir, `${fileNameWithoutExt}_temp.pst`);
+
+            console.log(`Creating temporary file: ${tempFilePath}`);
+            await fs.promises.writeFile(tempFilePath, document.getText());
+            console.log(`Running PestCheck for: ${fileNameWithoutExt}_temp`);
+            const configuration = vscode.workspace.getConfiguration("pestd3code");
+            let pestCheckPath = configuration.get<string>("pestcheckPath", "");
+            if (!pestCheckPath || !fs.existsSync(pestCheckPath)) {
+                vscode.window.showWarningMessage("PestCheck executable path is not configured or invalid.");
+                return;
             }
-        })
-    );
+            try {
+                const pestProcess = spawn(
+                    pestCheckPath,
+                    [`${fileNameWithoutExt}_temp`],
+                    { cwd: fileDir }
+                );
+                let output = '';
+                pestProcess.stdout.on('data', (data) => {
+                    output += data.toString();
+                });
+                pestProcess.stderr.on('data', (data) => {
+                    output += data.toString();
+                });
+                pestProcess.on('close', (code) => {
+                    console.log('====== PestCheck Output Start ======');
+                    console.log('Raw output:');
+                    console.log(output);
+                    console.log('====== PestCheck Output End ======');
+
+                    console.log(`PestCheck process exited with code: ${code}`);
+
+
+                    // USE THE NEW PARSER
+                    const results = parsePestchekOutput(output);
+
+
+
+                    if (!rawPanel) {
+                        rawPanel = vscode.window.createWebviewPanel(
+                            'rawOutput',
+                            'PestCheck Raw Output',
+                            {
+                                viewColumn: vscode.ViewColumn.Beside,
+                                preserveFocus: true
+                            },
+                            {
+                                retainContextWhenHidden: true,
+                                enableFindWidget: true
+                            }
+                        );
+
+
+                        rawPanel.onDidDispose(() => {
+                            rawPanel = undefined;
+                        });
+
+                    }
+
+
+
+
+
+
+
+                    // Actualizar el contenido del WebView
+                    rawPanel.webview.html = `
+                <html>
+                    <body style="padding: 10px">
+                        <h3>Raw PestCheck Output</h3>
+                        <pre style="background-color: var(--vscode-editor-background); padding: 10px">
+                            ${output}
+                        </pre>
+                    </body>
+                </html>
+            `;
+                    // Asegurar que el contenido esté visible pero sin robar el foco
+                    rawPanel.reveal(vscode.ViewColumn.Beside, false);
+
+                    rawOutputChannel.appendLine('====== Raw PestCheck Output ======');
+                    rawOutputChannel.appendLine(output);
+                    rawOutputChannel.appendLine('====== End Raw Output ======');
+
+                    //
+                    // Definir el mapeo de severidades
+                    const severityMap = {
+                        0: { text: 'Error', icon: '⛔' }, // Cambiado de ❌ a ⛔
+                        1: { text: 'Warning', icon: '⚠️' },
+                        2: { text: 'Information', icon: 'ℹ️' },
+                        3: { text: 'Hint', icon: '💡' }
+                    };
+
+                    // Definir los encabezados de sección
+                    const severityHeaders = {
+                        'ERROR': '⛔ ERRORS', // Cambiado de ❌ a ⛔
+                        'WARNING': '⚠️ WARNINGS'
+                    };
+
+                    // Separadores decorativos
+                    const decorativeSeparators = {
+                        header: '🔹 ═══════════════════════════════════════ 🔹',
+                        section: '🔸 ─────────────────────────────────────── 🔸',
+                        item: '─'.repeat(40), // Cambiado de puntos a guiones largos
+                        footer: '🔹 ═══════════════════════════════════════ 🔹'
+                    };
+
+                    // Generar el encabezado principal
+                    outputChannel.appendLine(decorativeSeparators.header);
+                    outputChannel.appendLine('🔍 PestCheck Results');
+                    outputChannel.appendLine(decorativeSeparators.header);
+                    outputChannel.appendLine('');
+
+                    // Filtrar resultados
+                    const errorResults = results.filter(r => r.type === 'ERROR');
+                    const warningResults = results.filter(r => r.type === 'WARNING');
+
+                    // Mostrar errores
+                    if (errorResults.length > 0) {
+                        outputChannel.appendLine(severityHeaders['ERROR']);
+                        outputChannel.appendLine(decorativeSeparators.section);
+                        errorResults.forEach(result => {
+                            const severity = severityMap[result.diagnostic.severity as keyof typeof severityMap];
+                            outputChannel.appendLine(`${severity.icon} Severity: ${severity.text}`);
+                            outputChannel.appendLine(`🔵 Position: Line ${result.diagnostic.range.start.line + 1}`); // Cambiado de 📍 a 🔵
+                            outputChannel.appendLine(`🗨️ Message: ${result.diagnostic.message}`); // Cambiado 💬 por 🗨️
+                            outputChannel.appendLine(decorativeSeparators.item);
+                        });
+                        outputChannel.appendLine('');
+                    }
+
+                    // Mostrar advertencias
+                    if (warningResults.length > 0) {
+                        outputChannel.appendLine(severityHeaders['WARNING']);
+                        outputChannel.appendLine(decorativeSeparators.section);
+                        warningResults.forEach(result => {
+                            const severity = severityMap[result.diagnostic.severity as keyof typeof severityMap];
+                            outputChannel.appendLine(`${severity.icon} Severity: ${severity.text}`);
+                            outputChannel.appendLine(`🔵 Position: Line ${result.diagnostic.range.start.line + 1}`); // Cambiado de 📍 a 🔵
+                            outputChannel.appendLine(`🗨️ Message: ${result.diagnostic.message}`); // Cambiado 💬 por 🗨️
+                            outputChannel.appendLine(decorativeSeparators.item);
+                        });
+                        outputChannel.appendLine('');
+                    }
+
+                    // Mostrar el resumen final
+                    outputChannel.appendLine(decorativeSeparators.footer);
+                    outputChannel.appendLine('🎯 PESTCHEK Version 18.25. Watermark Numerical Computing');
+                    outputChannel.appendLine('┌──────────────────────────────────────┐');
+                    outputChannel.appendLine(`│ 📋 Analysis Results                  │`);
+                    outputChannel.appendLine(`│ ⛔ Errors found: ${errorResults.length.toString().padEnd(5)}              │`);
+                    outputChannel.appendLine(`│ ⚠️ Warnings found: ${warningResults.length.toString().padEnd(5)}            │`);
+                    outputChannel.appendLine('└──────────────────────────────────────┘');
+                    outputChannel.appendLine(decorativeSeparators.footer);
+
+
+
+                    // Actualizar diagnósticos
+                    if (!diagnosticCollection) {
+                        diagnosticCollection =
+                            vscode.languages.createDiagnosticCollection("pestCheck");
+                    }
+                    diagnosticCollection.clear();
+                    const diagnostics = results.map(result => result.diagnostic);
+                    diagnosticCollection.set(document.uri, diagnostics);
+
+
+
+                });
+            } catch (error) {
+                console.error("Error executing PestCheck:", error);
+                vscode.window.showWarningMessage(`Error running PestCheck: ${error}`);
+                try {
+                    await fs.promises.unlink(tempFilePath);
+                } catch (error) {
+                    console.error('Error cleaning up temporary file:', error);
+                }
+            }
+        }
+        catch (error) {
+            console.error("Error in runPestCheck:", error);
+            vscode.window.showErrorMessage(`❌ Error running PestCheck: ${error}`);
+        }
+    }
+
+
+
+
 
 
 
@@ -792,6 +854,7 @@ export async function activate(
     // #region Run PestCheck command
 
     vscode.commands.registerCommand("pestd3code.runPestCheck", () => {
+        vscode.commands.executeCommand('workbench.action.output.toggleOutput');
         const activeEditor = vscode.window.activeTextEditor;
         if (!activeEditor) {
             vscode.window.showWarningMessage("No active file to run PestCheck.");
@@ -818,7 +881,22 @@ export async function activate(
     =======================================================*/
     // #region Clear diagnostics
     vscode.commands.registerCommand("pestd3code.clearDiagnostics", () => {
+        // Clear diagnostics
         diagnosticCollection?.clear();
+
+        // Clear PestCheck Results output channel
+        outputChannel?.clear();
+
+        // Clear Raw Output channel
+        rawOutputChannel?.clear();
+
+        // Close and dispose WebView panel
+        if (rawPanel) {
+            rawPanel.dispose();
+            rawPanel = undefined;
+        }
+
+        console.log('All PestCheck outputs cleared');
     });
     // #endregion Clear diagnostics
 
@@ -837,7 +915,7 @@ export async function activate(
         const filePath = uri.fsPath;
 
         // Ignore temporary files (those with 'copy_' prefix)
-        if (path.basename(filePath).startsWith("copy_")) {
+        if (path.basename(filePath).startsWith("copy_") || path.basename(filePath).endsWith("_temp.pst")) {
             return;
         }
 
@@ -2307,6 +2385,31 @@ export async function activate(
             vscode.window.showInformationMessage("PestD3code activated!");
         }
     );
+
+    context.subscriptions.push(
+        vscode.workspace.onDidCloseTextDocument(document => {
+            if (document) {
+                // Limpiar los diagnósticos
+                if (diagnosticCollection) {
+                    diagnosticCollection.delete(document.uri);
+                }
+                /*                 // Limpiar los paneles de output
+                                if (outputChannel) {
+                                    outputChannel.clear();
+                                    outputChannel.hide();
+                                }
+                                if (rawOutputChannel) {
+                                    rawOutputChannel.clear();
+                                    rawOutputChannel.hide();
+                                }
+                                // Si existe un webview, también lo cerramos
+                                if (typeof rawPanel !== 'undefined') {
+                                    rawPanel.dispose();
+                                } */
+            }
+        })
+    );
+
     context.subscriptions.push(manualCodeLensProvider);
     context.subscriptions.push(disposable);
     context.subscriptions.push(hoverProvider);
