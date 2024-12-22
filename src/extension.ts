@@ -101,15 +101,15 @@ const controlDataStructure: Variable[][] = [
             name: "PRECIS",
             type: "string",
             required: true,
-            //allowedValues: ["single", "double"],
+            allowedValues: ["single", "double"],
         },
         {
             name: "DPOINT",
             type: "string",
             required: true,
-            //allowedValues: ["point", "nopoint"],
+            allowedValues: ["point", "nopoint"],
         },
-        { name: "NUMCOM", type: "integer", required: false },
+        { name: "NUMCOM", type: "integer", required: false, },
         { name: "JACFILE", type: "integer", required: false },
         { name: "MESSFILE", type: "integer", required: false },
         { name: "OBSREREF", type: "string", required: false, allowedValues: ["obsreref", "obsreref_N", "noobsreref"] },
@@ -375,13 +375,18 @@ function validateType(
     value: string,
     type: "string" | "integer" | "float"
 ): boolean {
+    // Primero validar si es un número para integer/float
     if (type === "integer") {
-        return /^\d+$/.test(value);
+        return /^-?\d+$/.test(value) && !isNaN(parseInt(value));
     }
     if (type === "float") {
-        return /^-?\d+(\.\d+)?(e[-+]?\d+)?$/i.test(value); // Soporte para notación científica
+        return /^-?\d+(\.\d+)?(e[-+]?\d+)?$/i.test(value) && !isNaN(parseFloat(value));
     }
-    return typeof value === "string";
+    // Para strings, validar que NO sea un número
+    if (type === "string") {
+        return isNaN(Number(value)) || value.trim() === "";
+    }
+    return false;
 }
 // #endregion Validate type of the variable
 
@@ -1518,7 +1523,12 @@ export async function activate(
                     }
                     if (!variableInfo) {
                         console.log("No variable info found for the detected word.");
-                        return null;
+                        const markdown = new vscode.MarkdownString();
+                        markdown.isTrusted = true; // Enable command links
+                        markdown.appendMarkdown(`### ⚠️ Undefined Variable\n\n`);
+                        markdown.appendMarkdown(`🔍 Recommend running PestCheck to validate the file\n\n`);
+                        markdown.appendMarkdown(`[Run PestCheck](command:pestd3code.runPestCheck)`);
+                        return new vscode.Hover(markdown);
                     }
 
                     // console.log(Variable info: ${variableInfo.name});
@@ -1559,26 +1569,29 @@ export async function activate(
                             const optionalValueIndex = values.findIndex(
                                 (v) =>
                                     Array.isArray(variable.allowedValues) &&
-                                    variable.allowedValues.includes(v)
+                                    variable.allowedValues.includes(v.toLowerCase())
                             );
-                            // Si no se encuentra, usar el valor actual
+                            // Solo asignar si el valor está en la lista de valores permitidos
                             if (optionalValueIndex !== -1) {
                                 value = values[optionalValueIndex];
+                                valueIndex = optionalValueIndex + 1; // Avanzar el índice después del valor encontrado
                                 console.log(
-                                    `Asignado valor opcional ${value} a ${variable.name}`
+                                    `Asignado valor válido ${value} a ${variable.name}`
+                                );
+                            } else {
+                                value = "INVALID";
+                                console.log(
+                                    `Valor inválido para ${variable.name}. Valores permitidos: ${variable.allowedValues.join(", ")}`
                                 );
                             }
-                        }
-
-                        // Si no tiene allowedValues, asignar el valor actual si es válido
-                        if (
-                            !value &&
+                        } else if (
                             currentValue &&
                             validateType(
                                 currentValue,
                                 variable.type as "string" | "integer" | "float"
                             )
                         ) {
+                            // Si no tiene allowedValues, asignar el valor actual si es válido
                             value = currentValue;
                             valueIndex++; // Avanzar el índice solo si se asigna un valor numérico
                             console.log(
@@ -1651,8 +1664,6 @@ export async function activate(
                         `La palabra "${word}" ha aparecido ${wordOccurrences} veces antes del cursor.`
                     );
                     console.log("Indice de la linea " + indexline);
-
-
 
 
 
