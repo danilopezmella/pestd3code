@@ -598,8 +598,16 @@ export async function activate(
                         rawPanel.onDidDispose(() => {
                             rawPanel = undefined;
                         });
+                        rawPanel.onDidChangeViewState(() => {
+                            if (rawPanel?.active) {
+                                vscode.commands.executeCommand('setContext', 'rawOutputViewActive', true);
+                            } else {
+                                vscode.commands.executeCommand('setContext', 'rawOutputViewActive', false);
+                            }
+                        });
 
                     }
+
 
 
 

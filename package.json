@@ -80,16 +80,30 @@
       },
       {
         "command": "pestd3code.runPestCheck",
-        "title": "Run PestCheck for generating output",
-        "category": "PestD3code"
+        "title": "Run PestCheck",
+        "category": "PestD3code",
+        "icon": "$(run)"
       },
       {
         "command": "pestd3code.clearDiagnostics",
         "title": "Clear diagnostics",
-        "category": "PestD3code"
+        "category": "PestD3code",
+        "icon": "$(trash)"
       }
     ],
     "menus": {
+      "editor/title": [
+        {
+            "command": "pestd3code.runPestCheck",
+            "group": "navigation@1",
+            "when": "resourceExtname == .pst || rawOutputViewActive"
+        },
+        {
+            "command": "pestd3code.clearDiagnostics",
+            "group": "navigation@2",
+            "when":  "resourceExtname == .pst || rawOutputViewActive"
+        }
+    ],
       "view/item/context": [
         {
           "command": "pestd3code.clearDiagnostics",
