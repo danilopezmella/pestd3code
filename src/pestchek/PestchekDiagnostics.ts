@@ -38,6 +38,7 @@ export function parsePestchekOutput(output: string): PestchekResult[] {
     let currentSection: 'ERROR' | 'WARNING' | null = null;
     let currentMessage: string | null = null;
     let currentLineNumber: number | null = null;
+    let pendingMessage: string | null = null;
 
     const lines = output.split('\n').map(l => l.trim());
     console.log('Procesando líneas:', lines);
@@ -56,7 +57,19 @@ export function parsePestchekOutput(output: string): PestchekResult[] {
         }
         
         if (!currentSection) { continue; }
-
+        
+  // Add this new condition before the lineMatch check
+  if (line.startsWith('Cannot open')) {
+    results.push(createDiagnostic(
+        'ERROR',
+        line + (lines[i + 1]?.trim().startsWith('observation group') ? ' ' + lines[++i].trim() : ''),
+        {
+            start: { line: 0, character: 0 },
+            end: { line: 0, character: Number.MAX_VALUE }
+        }
+    ));
+    continue;
+}
         // Detectar inicio de un nuevo error con número de línea
         const lineMatch = line.match(/Line\s+(\d+)\s+of\s+file\s+([^:]+):\s*(.*)/);
         if (lineMatch) {

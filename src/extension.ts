@@ -124,13 +124,13 @@ const controlDataStructure: Variable[][] = [
             name: "LAMFORGIVE",
             type: "string",
             required: false,
-            //allowedValues: ["lamforgive", "nolamforgive"],
+            allowedValues: ["lamforgive", "nolamforgive"],
         },
         {
             name: "DERFORGIVE",
             type: "string",
             required: false,
-            //allowedValues: ["derforgive", "noderforgive"],
+            allowedValues: ["derforgive", "noderforgive"],
         },
     ],
     [
@@ -146,7 +146,7 @@ const controlDataStructure: Variable[][] = [
             name: "DOAUI",
             type: "string",
             required: false,
-            //allowedValues: ["aui", "noaui"],
+            allowedValues: ["aui", "noaui"],
         },
     ],
     [
@@ -678,7 +678,7 @@ export async function activate(
             try {
                 const pestProcess = spawn(
                     pestCheckPath,
-                    [`${fileNameWithoutExt}_temp`],
+                    [`${fileNameWithoutExt}_temp`, '/s'], 
                     { cwd: fileDir }
                 );
                 let output = '';
@@ -1534,15 +1534,20 @@ export async function activate(
                     console.log(
                         `La palabra "${word}" ha aparecido ${wordOccurrences} veces antes del cursor.`
                     );
-                    console.log("Indice de la linea" + indexline);
+                    console.log("Indice de la linea " + indexline);
 
+
+
+                    //TODO: not working for NOAUI AUI
                     // Define variableInfo como la variable mapeada que coincide con la palabra y la ocurrencia
+              
                     const variableInfo = mappedVariables.find(
                         (v) => v.value === word && v.id === wordOccurrences + 1
                     );
-
+                    console.log("Variable info: " + variableInfo);
                     // Si no se encuentra la variable, devolver nulo
                     if (!variableInfo) {
+                        console.log("No variable info found for the detected word.");
                         return null;
                     }
                     // Si se encuentra la variable, devolver un MarkdownString
@@ -1568,7 +1573,7 @@ export async function activate(
                                     .map((val) => `\`${val}\``)
                                     .join(", ")}\n`
                                 : "") +
-                            `- **Rquired:** ${variable.Mandatory === "required" ? "Yes" : "No"
+                            `- **Required:** ${variable.Mandatory === "required" ? "Yes" : "No"
                             }`
                         );
                     }
