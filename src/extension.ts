@@ -678,7 +678,7 @@ export async function activate(
             try {
                 const pestProcess = spawn(
                     pestCheckPath,
-                    [`${fileNameWithoutExt}_temp`, '/s'], 
+                    [`${fileNameWithoutExt}_temp`, '/s'],
                     { cwd: fileDir }
                 );
                 let output = '';
@@ -1388,16 +1388,15 @@ export async function activate(
                         }
 
                         return new vscode.MarkdownString(
-                            `### Variable: **${variable.Variable}**\n\n` +
-                            `- **Description:** *${variable.Description}*\n` +
-                            `- **Type:** \`${variable.Type}\`\n` +
+                            `### 🏷️ Variable: **${variable.Variable}**\n\n` +
+                            `📖 **Description:** ${variable.Description}\n\n` +
+                            `📐 **Type:** \`${variable.Type}\`\n\n` +
                             (variable.Values
-                                ? `- **Allowed Values:** ${variable.Values.split(", ")
+                                ? `🔢 **Allowed Values:** ${variable.Values.split(", ")
                                     .map((val) => `\`${val}\``)
-                                    .join(", ")}\n`
+                                    .join(", ")}\n\n`
                                 : "") +
-                            `- **Required:** ${variable.Mandatory === "required" ? "Yes" : "No"
-                            }`
+                            `❓ **Required:** ${variable.Mandatory === "required" ? "Yes" : "No"}`
                         );
                     }
                     if (!variableInfo) {
@@ -1421,7 +1420,7 @@ export async function activate(
 
                 // Si el indice de la linea es distinto de 7
                 if (indexline !== 7) {
-                    
+
                     // Iterar sobre la estructura de la línea
                     lineStructure.forEach((variable) => {
                         // Inicializar la variable con un valor nulo
@@ -1538,9 +1537,9 @@ export async function activate(
 
 
 
-                    //TODO: not working for NOAUI AUI
+                    //TODO: Tooltip link for unassigned variables
                     // Define variableInfo como la variable mapeada que coincide con la palabra y la ocurrencia
-              
+
                     const variableInfo = mappedVariables.find(
                         (v) => v.value === word && v.id === wordOccurrences + 1
                     );
@@ -1548,7 +1547,12 @@ export async function activate(
                     // Si no se encuentra la variable, devolver nulo
                     if (!variableInfo) {
                         console.log("No variable info found for the detected word.");
-                        return null;
+                        const markdown = new vscode.MarkdownString();
+                        markdown.isTrusted = true; // Enable command links
+                        markdown.appendMarkdown(`### ⚠️ Undefined Variable\n\n`);
+                        markdown.appendMarkdown(`🔍 Recommend running PestCheck to validate the file\n\n`);
+                        markdown.appendMarkdown(`[Run PestCheck](command:pestd3code.runPestCheck)`);
+                        return new vscode.Hover(markdown);
                     }
                     // Si se encuentra la variable, devolver un MarkdownString
                     // Función para obtener el contenido del hover
@@ -1565,16 +1569,15 @@ export async function activate(
                         }
                         // Si se encuentra la variable, devolver un MarkdownString
                         return new vscode.MarkdownString(
-                            `### Variable: **${variable.Variable}**\n\n` +
-                            `- **Description:** *${variable.Description}*\n` +
-                            `- **Type:** \`${variable.Type}\`\n` +
+                            `### 🏷️ Variable: **${variable.Variable}**\n\n` +
+                            `📖 **Description:** *${variable.Description}*\n\n` +
+                            `📐 **Type:** \`${variable.Type}\`\n\n` +
                             (variable.Values
-                                ? `- **Allowed Values:** ${variable.Values.split(", ")
+                                ? `🔢 **Allowed Values:** ${variable.Values.split(", ")
                                     .map((val) => `\`${val}\``)
-                                    .join(", ")}\n`
+                                    .join(", ")}\n\n`
                                 : "") +
-                            `- **Required:** ${variable.Mandatory === "required" ? "Yes" : "No"
-                            }`
+                            `❓ **Required:** ${variable.Mandatory === "required" ? "Yes" : "No"}`
                         );
                     }
 
@@ -1692,10 +1695,10 @@ export async function activate(
 
                 // Construir el contenido del hover
                 const hoverContent = new vscode.MarkdownString(
-                    `### Variable: **${variable.name}**\n\n` +
-                    `- **Description:** ${description}\n` +
-                    `- **Type:** \`${variable.type}\`\n` +
-                    `- **Required:** ${variable.required ? "Yes" : "No"}`
+                    `### 🏷️ Variable: **${variable.name}**\n\n` +
+                    `📖 **Description:** ${description}\n\n` +
+                    `📐 **Type:** \`${variable.type}\`\n\n` +
+                    `❓ **Required:** ${variable.required ? "Yes" : "No"}`
                 );
 
                 return new vscode.Hover(hoverContent);
@@ -2405,55 +2408,57 @@ export async function activate(
     /*========================================================
       CodeLens provider for bat files
     ========================================================*/
-
-    const codeLensProviderbat = vscode.languages.registerCodeLensProvider(
-        { scheme: "file", pattern: "**/*.bat" },
+    //TODO: ADD SUPPORT FOR SH AND BASH FILES FOR MAC USERS
+    const pathCodeLensProvider = vscode.languages.registerCodeLensProvider(
+        { scheme: "file", pattern: "**/*.{bat,sh,py}" }, // Supports .bat, .sh, and .py files
         {
             provideCodeLenses(document) {
-                const codeLenses: vscode.CodeLens[] = [];
+                const codeLenses = [];
                 const lines = document.getText().split("\n");
-                let currentDir = path.dirname(document.uri.fsPath); // Start with the .bat file's directory
-
+                let currentDir = path.dirname(document.uri.fsPath); // Start with the script's directory
+                let lastResolvedPath = null; // Store the last resolved path for Python files
+    
                 lines.forEach((line, i) => {
                     const trimmedLine = line.trim();
-
-                    // Detect `cd` commands and update currentDir
-                    const cdMatch = trimmedLine.match(/^cd\s+(.+)/i);
+    
+                    // Handle `%~dp0` in .bat files
+                    const resolvedLine = trimmedLine.replace(/%~dp0/gi, path.dirname(document.uri.fsPath) + path.sep);
+    
+                    // Detect `cd` commands in .bat and .sh files
+                    const cdMatch = resolvedLine.match(/^cd\s+(.+)/i);
                     if (cdMatch) {
                         const pathCommand = cdMatch[1].trim(); // Extract the path after `cd`
-                        const baseDir = path.dirname(document.uri.fsPath); // Directory of the .bat file
-
-                        // Resolve the path (handles absolute paths, `%~dp0`, etc.)
-                        currentDir = resolvePath(baseDir, pathCommand);
-
+                        const resolvedFolderPath = path.isAbsolute(pathCommand)
+                            ? pathCommand // Absolute path
+                            : path.resolve(currentDir, pathCommand); // Relative path
+    
                         const range = new vscode.Range(i, 0, i, trimmedLine.length);
-
-                        // Add CodeLens for the `cd` command
+    
+                        // Add CodeLens for `cd` commands
                         codeLenses.push(
                             new vscode.CodeLens(range, {
-                                title: `📂 Open Folder: ${currentDir}`,
+                                title: `📂 Open Folder: ${resolvedFolderPath}`,
                                 command: "extension.openPath",
-                                arguments: [currentDir],
+                                arguments: [resolvedFolderPath],
                             })
                         );
                     }
-
-                    // Detect file references anywhere in the line
-                    const fileMatches = [
-                        ...trimmedLine.matchAll(/([a-zA-Z0-9_\-\.]+\.[a-zA-Z0-9]+)/g),
-                    ];
-                    fileMatches.forEach((match) => {
-                        const fileName = match[1]; // Extract the filename
-                        const resolvedFilePath = path.resolve(currentDir, fileName); // Combine current directory with the filename
-
+    
+                    // Detect file references in .bat, .sh, and .py files
+                    const filePathMatch = resolvedLine.match(/path\.join\((.*?)['"]([^'"]+\.\w+)['"]\)/);
+                    if (filePathMatch) {
+                        const fileName = filePathMatch[2]; // Extract the file name
+                        const resolvedFilePath = path.resolve(currentDir, fileName); // Resolve full path
+    
                         const range = new vscode.Range(
                             i,
-                            match.index || 0,
+                            filePathMatch.index || 0,
                             i,
-                            (match.index || 0) + fileName.length
+                            (filePathMatch.index || 0) + fileName.length
                         );
-
-                        // Add CodeLens for the file reference
+    
+                        // Add CodeLens for file references
+                        lastResolvedPath = resolvedFilePath; // Store the last resolved file path
                         codeLenses.push(
                             new vscode.CodeLens(range, {
                                 title: `📄 Open File: ${resolvedFilePath}`,
@@ -2461,13 +2466,85 @@ export async function activate(
                                 arguments: [resolvedFilePath],
                             })
                         );
-                    });
+                    }
+    
+                    // Detect Python folder paths
+                    const folderPathMatch = trimmedLine.match(/path\.join\(([^)]+)\)/);
+                    if (folderPathMatch) {
+                        const components = folderPathMatch[1]
+                            .split(",")
+                            .map((component) =>
+                                component.trim().replace(/['"]/g, "").replace("os.getcwd()", currentDir)
+                            ); // Resolve components
+                        const resolvedFolderPath = path.resolve(...components);
+    
+                        const range = new vscode.Range(i, 0, i, trimmedLine.length);
+    
+                        // Add CodeLens for Python folder paths
+                        lastResolvedPath = resolvedFolderPath; // Store the last resolved folder path
+                        codeLenses.push(
+                            new vscode.CodeLens(range, {
+                                title: `📂 Open Folder: ${resolvedFolderPath}`,
+                                command: "extension.openPath",
+                                arguments: [resolvedFolderPath],
+                            })
+                        );
+                    }
+    
+                    // Detect Python file paths
+                    const pythonFileMatch = trimmedLine.match(/(?:open|os\.path\.\w+)\((['"])(.+?)\1/);
+                    if (pythonFileMatch) {
+                        const filePath = pythonFileMatch[2]; // Extract the path inside quotes
+                        const resolvedFilePath = path.isAbsolute(filePath)
+                            ? filePath // Absolute path
+                            : path.resolve(currentDir, filePath); // Relative path
+    
+                        const range = new vscode.Range(i, 0, i, trimmedLine.length);
+    
+                        // Add CodeLens for Python file paths
+                        lastResolvedPath = resolvedFilePath; // Update the last resolved path
+                        codeLenses.push(
+                            new vscode.CodeLens(range, {
+                                title: `📄 Open File: ${resolvedFilePath}`,
+                                command: "extension.openFile",
+                                arguments: [resolvedFilePath],
+                            })
+                        );
+                    }
                 });
+               
+                let lastResolvedPathpy: string | null = null; // Explicitly type and initialize the variable
 
+                if (document.languageId === "python" && lastResolvedPathpy) {
+                    const range = new vscode.Range(0, 0, 0, 0); // Place it at the top of the file
+                
+                    // Ensure TypeScript knows lastResolvedPathpy is a string
+                    const isFile = (lastResolvedPathpy as string).endsWith(".py"); // Use type assertion for clarity
+                
+                    codeLenses.push(
+                        new vscode.CodeLens(range, {
+                            title: isFile
+                                ? `📄 Open Last Resolved File: ${lastResolvedPathpy}`
+                                : `📂 Open Last Resolved Folder: ${lastResolvedPathpy}`,
+                            command: isFile ? "extension.openFile" : "extension.openPath",
+                            arguments: [lastResolvedPathpy],
+                        })
+                    );
+                }
+                
+                
+                
+                
+    
                 return codeLenses;
             },
         }
     );
+    
+    
+    
+    
+
 
     // Command to open resolved paths (folders)
     const openPathCommand = vscode.commands.registerCommand(
@@ -2496,7 +2573,7 @@ export async function activate(
     );
 
     context.subscriptions.push(
-        codeLensProviderbat,
+        pathCodeLensProvider,
         openPathCommand,
         openFileCommand
     );
@@ -2525,13 +2602,13 @@ export async function activate(
                 }
                 return new vscode.Hover(
                     new vscode.MarkdownString(
-                        `### Variable: **${description.Variable}**\n\n` +
-                        `- **Description:** *${description.Description}*\n` +
-                        `- **Type:** \`${description.Type}\`\n` +
+                        `### 🏷️ Variable: **${description.Variable}**\n\n` +
+                        `📖 **Description:** *${description.Description}*\n\n` +
+                        `📐 **Type:** \`${description.Type}\`\n\n` +
                         (description.Values
-                            ? `- **Allowed Values:** ${description.Values.split(", ")
+                            ? `🔢 **Allowed Values:** ${description.Values.split(", ")
                                 .map((val) => `\`${val}\``)
-                                .join(", ")}\n`
+                                .join(", ")}\n\n`
                             : "")
                     )
                 );

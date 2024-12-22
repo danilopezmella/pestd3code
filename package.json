@@ -18,7 +18,9 @@
   "activationEvents": [
     "workspaceContains:**/*.{pst,pest}",
     "onLanguage:pest",
-    "onStartupFinished"
+    "onStartupFinished",  
+     "onLanguage:bat",
+    "onLanguage:shellscript"
   ],
   "main": "./out/extension.js",
   "contributes": {
