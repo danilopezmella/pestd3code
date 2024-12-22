@@ -4,7 +4,7 @@
   "description": "Enhance readability and usability of PEST control files for MODFLOW with structured decorators, hover support, and interactive features.",
   "publisher": "DanielLopezMella",
   "icon": "images/icon.png",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "engines": {
     "vscode": "^1.84.0"
   },
@@ -37,27 +37,7 @@
         "pestd3code.pestcheckPath": {
           "type": "string",
           "default": "",
-          "description": "Path to the pestchek.exe executable. Use the 'Set PestCheck Path' command to browse for the file."
-        },
-        "pestd3code.runFrequency": {
-          "type": "number",
-          "default": 60,
-          "description": "Frequency (in seconds) to automatically run pestchek.exe on the active .pst file."
-        },
-        "pestd3code.enableRecurringCheck": {
-          "type": "boolean",
-          "default": false,
-          "description": "Enable recurring PestCheck execution."
-        },
-        "pestd3code.recurringInterval": {
-          "type": "number",
-          "default": 60,
-          "description": "Interval in seconds for recurring PestCheck execution."
-        },
-        "pestd3code.pestCheckUpdateInterval": {
-          "type": "number",
-          "default": 5000,
-          "description": "Interval in milliseconds for updating PestCheck dynamically."
+          "description": "Path to the Pestchek. Use the 'Try to autoset PestCheck' or 'Set PestCheck Path Manually' commands to browse for the file."
         }
       }
     },
@@ -72,7 +52,7 @@
       },
       {
         "command": "pestd3code.findPestCheck",
-        "title": "Find PestCheck Executable",
+        "title": "Try to autoset PestCheck",
         "category": "PestD3code"
       },
       {
@@ -125,8 +105,7 @@
       {
         "id": "pst",
         "extensions": [
-          ".pst",
-          ".pest"
+          ".pst"
         ],
         "aliases": [
           "PEST File"

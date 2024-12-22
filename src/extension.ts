@@ -112,6 +112,7 @@ const controlDataStructure: Variable[][] = [
         { name: "NUMCOM", type: "integer", required: false },
         { name: "JACFILE", type: "integer", required: false },
         { name: "MESSFILE", type: "integer", required: false },
+        { name: "OBSREREF", type: "string", required: false, allowedValues: ["obsreref", "obsreref_N", "noobsreref"] },
     ],
     [
         { name: "RLAMBDA1", type: "float", required: true },
@@ -137,6 +138,9 @@ const controlDataStructure: Variable[][] = [
         { name: "RELPARMAX", type: "float", required: true },
         { name: "FACPARMAX", type: "float", required: true },
         { name: "FACORIG", type: "float", required: true },
+        { name: "IBOUNDSTICK", type: "integer", required: false },
+        { name: "UPVECBEND", type: "integer", required: false, allowedValues: ["0", "1"] },
+
     ],
     [
         { name: "PHIREDSWH", type: "float", required: true },
@@ -148,6 +152,8 @@ const controlDataStructure: Variable[][] = [
             required: false,
             allowedValues: ["aui", "noaui"],
         },
+        { name: "DOSENREUSE", type: "string", required: false, allowedValues: ["senreuse", "nosenreuse"] },
+        { name: "BOUNDSCALE", type: "string", required: false, allowedValues: ["boundscale", "noboundscale"] }
     ],
     [
         { name: "NOPTMAX", type: "float", required: true },
@@ -156,6 +162,9 @@ const controlDataStructure: Variable[][] = [
         { name: "NPHINORED", type: "integer", required: true },
         { name: "RELPARSTP", type: "float", required: true },
         { name: "NRELPAR", type: "integer", required: true },
+        { name: "PHISTOPTHRESH", type: "float", required: false },
+        { name: "LASTRUN", type: "integer", required: false },
+        { name: "PHIABANDON", type: "float", required: false }
     ],
 
     [
@@ -729,18 +738,18 @@ export async function activate(
                         });
 
                     }
-
-                    // Actualizar el contenido del WebView
-                    rawPanel.webview.html = `
-                <html>
-                    <body style="padding: 10px">
-                        <h3>Raw PestCheck Output</h3>
-                        <pre style="background-color: var(--vscode-editor-background); padding: 10px">
-                            ${output}
-                        </pre>
-                    </body>
-                </html>
-            `;
+                    /* 
+                                        // Actualizar el contenido del WebView
+                                        rawPanel.webview.html = `
+                                    <html>
+                                        <body style="padding: 10px">
+                                            <h3>Raw PestCheck Output</h3>
+                                            <pre style="background-color: var(--vscode-editor-background); padding: 10px">
+                                                ${output}
+                                            </pre>
+                                        </body>
+                                    </html>
+                                `; */
                     // Asegurar que el contenido esté visible pero sin robar el foco
                     rawPanel.reveal(vscode.ViewColumn.Beside, false);
 
@@ -818,6 +827,46 @@ export async function activate(
                     outputChannel.appendLine(`│ ⚠️ Warnings found: ${warningResults.length.toString().padEnd(5)}            │`);
                     outputChannel.appendLine('└──────────────────────────────────────┘');
                     outputChannel.appendLine(decorativeSeparators.footer);
+
+
+                    // Determine the emoji and status message based on the results
+                    const errors = errorResults.length;
+                    const warnings = warningResults.length;
+
+                    let emoji = "";
+                    let statusMessage = "";
+
+                    if (errors > 0) {
+                        emoji = "😞";
+                        statusMessage = "Errors detected! Please fix them.";
+                    } else if (warnings > 0) {
+                        emoji = "😐";
+                        statusMessage = "Warnings detected. Review recommended.";
+                    } else {
+                        emoji = "😊";
+                        statusMessage = "No issues detected. Everything looks great!";
+                    }
+
+                    // Update the WebView content
+                    rawPanel.webview.html = `
+<html>
+    <body style="padding: 10px; font-family: Arial, sans-serif;">
+        <!-- Status Section -->
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="font-size: 3rem;">${emoji}</div>
+            <div style="font-size: 1.2rem; font-weight: bold; color: var(--vscode-editor-foreground);">
+                ${statusMessage}
+            </div>
+        </div>
+
+        <!-- PESTCHEK Output -->
+        <h3>Raw PestCheck Output</h3>
+        <pre style="background-color: var(--vscode-editor-background); padding: 10px; border-radius: 4px;">
+            ${output}
+        </pre>
+    </body>
+</html>
+`;
 
 
 
@@ -1040,7 +1089,7 @@ export async function activate(
 
     context.subscriptions.push(
         vscode.languages.registerDocumentSymbolProvider(
-            { scheme: "file", pattern: "**/*.{pst,pest}" }, // Cambia 'plaintext' al lenguaje que definiste para tus archivos .pst
+            { scheme: "file", pattern: "**/*.{pst}" }, // Cambia 'plaintext' al lenguaje que definiste para tus archivos .pst
             new PestDocumentSymbolProvider()
         )
     );
@@ -1076,61 +1125,111 @@ export async function activate(
     =======================================================*/
 
     // #region Detect changes to .pst files and offer to reload
+    // Active watchers management
+    const activeWatchers: Map<string, vscode.FileSystemWatcher> = new Map();
     const fileModificationTimes: Map<string, number> = new Map();
 
-    // Watch for changes to all .pst files in the workspace
-    const fileWatcher = vscode.workspace.createFileSystemWatcher("**/*.pst");
-
-    // Triggered when a file is modified
-    fileWatcher.onDidChange((uri) => {
-        const filePath = uri.fsPath;
-
-        // Ignore temporary files (those with 'copy_' prefix)
-        if (path.basename(filePath).startsWith("copy_") || path.basename(filePath).endsWith("_temp.pst")) {
+    // Create watcher for active editor
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+        if (!editor?.document.uri.fsPath.endsWith('.pst')) {
+            console.log('Not a PST file, skipping watcher creation');
             return;
         }
 
-        // Check the last modified time of the file
-        fs.stat(filePath, (err, stats) => {
-            if (err) {
-                console.error(`Error reading file stats: ${err.message}`);
+        const filePath = editor.document.uri.fsPath;
+        console.log(`Processing PST file: ${filePath}`);
+
+        // Avoid duplicate watchers
+        if (activeWatchers.has(filePath)) {
+            console.log(`Watcher already exists for: ${filePath}`);
+            return;
+        }
+
+        console.log(`Creating new watcher for: ${filePath}`);
+
+        // Create specific watcher for this file
+        const watcher = vscode.workspace.createFileSystemWatcher(
+            new vscode.RelativePattern(
+                path.dirname(filePath),
+                path.basename(filePath)
+            )
+        );
+
+        // Handle file changes
+        watcher.onDidChange(async (uri) => {
+            console.log(`Change detected in: ${uri.fsPath}`);
+
+            // Skip temporary files
+            if (path.basename(uri.fsPath).endsWith("_temp.pst")) {
+                console.log('Skipping temporary file modification');
                 return;
             }
 
-            const lastModified = stats.mtimeMs; // Last modification time in milliseconds
+            try {
+                const stats = await fs.promises.stat(uri.fsPath);
+                const lastModified = stats.mtimeMs;
+                const lastKnownModified = fileModificationTimes.get(uri.fsPath);
 
-            // Check if the modification is external (not in VS Code)
-            if (
-                !fileModificationTimes.has(filePath) ||
-                fileModificationTimes.get(filePath) !== lastModified
-            ) {
-                fileModificationTimes.set(filePath, lastModified); // Update the tracked modification time
+                if (!lastKnownModified || lastKnownModified !== lastModified) {
+                    console.log('File reloaded due to external modification');
 
-                // Notify the user and offer to reload the file
-                vscode.window
-                    .showWarningMessage(
-                        `The file "${filePath}" has been modified outside of VS Code. Would you like to reload it?`,
-                        "Reload"
-                    )
-                    .then((selection) => {
-                        if (selection === "Reload") {
-                            vscode.workspace.openTextDocument(uri).then((doc) => {
-                                vscode.window.showTextDocument(doc);
-                            });
-                        }
-                    });
+                    // Update the modification time
+                    fileModificationTimes.set(uri.fsPath, lastModified);
+
+                    // Notify the user
+                    vscode.window.showWarningMessage(
+                        `File "${path.basename(uri.fsPath)}" has been reloaded due to external modification.`
+                    );
+                }
+            } catch (error) {
+                console.error('Error processing file change:', error);
             }
         });
+
+        // Store watcher reference
+        activeWatchers.set(filePath, watcher);
     });
 
-    // Update modification time when the file is saved in VS Code
-    vscode.workspace.onDidSaveTextDocument((document) => {
-        if (document.fileName.endsWith(".pst")) {
-            const stats = fs.statSync(document.fileName);
-            fileModificationTimes.set(document.fileName, stats.mtimeMs);
+    // Cleanup watchers on file close
+    vscode.workspace.onDidCloseTextDocument((document) => {
+        const filePath = document.uri.fsPath;
+        if (filePath.endsWith('.pst')) {
+            console.log(`Cleaning up watcher for: ${filePath}`);
+            const watcher = activeWatchers.get(filePath);
+            if (watcher) {
+                watcher.dispose();
+                activeWatchers.delete(filePath);
+                fileModificationTimes.delete(filePath);
+            }
         }
     });
-    context.subscriptions.push(fileWatcher);
+
+    // Update modification time on save
+    vscode.workspace.onDidSaveTextDocument((document) => {
+        const filePath = document.uri.fsPath;
+        if (filePath.endsWith('.pst')) {
+            try {
+                const stats = fs.statSync(filePath);
+                fileModificationTimes.set(filePath, stats.mtimeMs);
+                console.log(`Updated modification time for: ${filePath}`);
+            } catch (error) {
+                console.error('Error updating modification time:', error);
+            }
+        }
+    });
+
+    // Ensure cleanup on extension deactivation
+    context.subscriptions.push({
+        dispose: () => {
+            console.log('Cleaning up all watchers');
+            for (const watcher of activeWatchers.values()) {
+                watcher.dispose();
+            }
+            activeWatchers.clear();
+            fileModificationTimes.clear();
+        }
+    });
+
 
     // #endregion Detect changes to .pst files and offer to reload
 
@@ -1140,7 +1239,7 @@ export async function activate(
 
     // #region CodeLens provider for manual
     const manualCodeLensProvider = vscode.languages.registerCodeLensProvider(
-        { scheme: "file", pattern: "**/*.{pst,pest}" },
+        { scheme: "file", pattern: "**/*.{pst}" },
         {
             provideCodeLenses() {
                 const codeLenses: vscode.CodeLens[] = [];
@@ -1179,7 +1278,7 @@ export async function activate(
 
     // #region Folding provider for PEST control file
     const foldingProvider = vscode.languages.registerFoldingRangeProvider(
-        { scheme: "file", pattern: "**/*.{pst,pest}" }, // Archivos con extensiones .pst y .pest
+        { scheme: "file", pattern: "**/*.{pst}" }, // Archivos con extensiones .pst 
         {
             provideFoldingRanges(document, _context, token) {
                 const ranges: vscode.FoldingRange[] = [];
@@ -1781,7 +1880,7 @@ export async function activate(
     }
 
     const parameterGroupsHoverProvider = vscode.languages.registerHoverProvider(
-        { scheme: "file", pattern: "**/*.{pst,pest}" },
+        { scheme: "file", pattern: "**/*.{pst}" },
         {
             provideHover(document, position): vscode.ProviderResult<vscode.Hover> {
                 const ranges = parseParameterGroups(document);
@@ -1808,7 +1907,7 @@ export async function activate(
 
     const parameterGroupsCodeLensProvider =
         vscode.languages.registerCodeLensProvider(
-            { scheme: "file", pattern: "**/*.{pst,pest}" },
+            { scheme: "file", pattern: "**/*.{pst}" },
             {
                 provideCodeLenses(document) {
                     const codeLenses: vscode.CodeLens[] = [];
@@ -1886,7 +1985,7 @@ export async function activate(
     }
 
     const obsGroupsHoverProvider = vscode.languages.registerHoverProvider(
-        { scheme: "file", pattern: "**/*.{pst,pest}" },
+        { scheme: "file", pattern: "**/*.{pst}" },
         {
             provideHover(document, position): vscode.ProviderResult<vscode.Hover> {
                 const ranges = parseObsGroups(document);
@@ -1912,7 +2011,7 @@ export async function activate(
     }
 
     const obsGroupsCodeLensProvider = vscode.languages.registerCodeLensProvider(
-        { scheme: "file", pattern: "**/*.{pst,pest}" },
+        { scheme: "file", pattern: "**/*.{pst}" },
         {
             provideCodeLenses(document) {
                 const codeLenses: vscode.CodeLens[] = [];
@@ -2002,7 +2101,7 @@ export async function activate(
     }
 
     const parameterDataHoverProvider = vscode.languages.registerHoverProvider(
-        { scheme: "file", pattern: "**/*.{pst,pest}" },
+        { scheme: "file", pattern: "**/*.{pst}" },
         {
             provideHover(document, position): vscode.ProviderResult<vscode.Hover> {
                 const ranges = parseParameterData(document);
@@ -2029,7 +2128,7 @@ export async function activate(
 
     const parameterDataCodeLensProvider =
         vscode.languages.registerCodeLensProvider(
-            { scheme: "file", pattern: "**/*.{pst,pest}" },
+            { scheme: "file", pattern: "**/*.{pst}" },
             {
                 provideCodeLenses(document) {
                     const codeLenses: vscode.CodeLens[] = [];
@@ -2107,7 +2206,7 @@ export async function activate(
     }
 
     const obsDataHoverProvider = vscode.languages.registerHoverProvider(
-        { scheme: "file", pattern: "**/*.{pst,pest}" },
+        { scheme: "file", pattern: "**/*.{pst}" },
         {
             provideHover(document, position): vscode.ProviderResult<vscode.Hover> {
                 const ranges = parseObsData(document);
@@ -2133,7 +2232,7 @@ export async function activate(
     }
 
     const obsDataCodeLensProvider = vscode.languages.registerCodeLensProvider(
-        { scheme: "file", pattern: "**/*.{pst,pest}" },
+        { scheme: "file", pattern: "**/*.{pst}" },
         {
             provideCodeLenses(document) {
                 const codeLenses: vscode.CodeLens[] = [];
@@ -2216,7 +2315,7 @@ export async function activate(
     }
 
     const PriorInformationHoverProvider = vscode.languages.registerHoverProvider(
-        { scheme: "file", pattern: "**/*.{pst,pest}" },
+        { scheme: "file", pattern: "**/*.{pst}" },
         {
             provideHover(document, position): vscode.ProviderResult<vscode.Hover> {
                 const ranges = parsePriorInformation(document);
@@ -2243,7 +2342,7 @@ export async function activate(
 
     const PriorInformationCodeLensProvider =
         vscode.languages.registerCodeLensProvider(
-            { scheme: "file", pattern: "**/*.{pst,pest}" },
+            { scheme: "file", pattern: "**/*.{pst}" },
             {
                 provideCodeLenses(document) {
                     const codeLenses: vscode.CodeLens[] = [];
@@ -2278,47 +2377,63 @@ export async function activate(
     // #region CodeLens provider for command line and input/output sections
 
     const codeLensProvider = vscode.languages.registerCodeLensProvider(
-        { scheme: "file", pattern: "**/*.{pst,pest}" },
+        { scheme: "file", pattern: "**/*.{pst}" },
         {
             provideCodeLenses(document) {
                 const codeLenses: vscode.CodeLens[] = [];
                 const lines = document.getText().split("\n");
                 let inRelevantSection = false;
+                let currentSection = ""; // Track the current section name
 
                 lines.forEach((line, i) => {
                     const trimmedLine = line.trim();
 
-                    // Detectar inicio de las secciones relevantes
+                    // Detect the start of relevant sections
                     if (
                         trimmedLine.startsWith("* model input/output") ||
                         trimmedLine.startsWith("* model command line")
                     ) {
                         inRelevantSection = true;
+                        currentSection = trimmedLine; // Store the section name
                         return;
                     }
 
-                    // Salir de la sección relevante
+                    // Exit relevant section
                     if (inRelevantSection && trimmedLine.startsWith("*")) {
                         inRelevantSection = false;
+                        currentSection = ""; // Reset the section name
                         return;
                     }
 
-                    // Procesar líneas dentro de secciones relevantes
+                    // Process lines inside relevant sections
                     if (inRelevantSection) {
                         if (trimmedLine.startsWith("++")) {
-                            // if line starts with ++ do not add code lens
-                            // Do nothing
-                        } else {
-                            const matches = trimmedLine.match(/[^ ]+/g);
-                            if (matches) {
-                                matches.forEach((filePath) => {
-                                    const range = new vscode.Range(i, 0, i, trimmedLine.length);
+                            // Skip lines starting with ++
+                            return;
+                        }
 
+                        const matches = trimmedLine.match(/[^ ]+/g); // Extract words or paths
+                        if (matches) {
+                            const range = new vscode.Range(i, 0, i, trimmedLine.length);
+
+                            // Special handling for "* model command line"
+                            if (currentSection.startsWith("* model command line")) {
+                                const filePath = matches[matches.length - 1]; // Only the last word
+                                codeLenses.push(
+                                    new vscode.CodeLens(range, {
+                                        title: `📂 Open ${filePath}`,
+                                        command: "extension.openFileFromDecoration",
+                                        arguments: [filePath],
+                                    })
+                                );
+                            } else {
+                                // For other sections, create a lens for each path
+                                matches.forEach((filePath) => {
                                     codeLenses.push(
                                         new vscode.CodeLens(range, {
                                             title: `📂 Open ${filePath}`,
                                             command: "extension.openFileFromDecoration",
-                                            arguments: [filePath], // Argumentos que pasamos al comando
+                                            arguments: [filePath],
                                         })
                                     );
                                 });
@@ -2331,6 +2446,7 @@ export async function activate(
             },
         }
     );
+
 
     const handleClick = vscode.commands.registerCommand(
         "extension.openFileFromDecoration",
@@ -2360,70 +2476,24 @@ export async function activate(
         }
     );
 
-    function resolvePath(baseDir: string, pathCommand: string): string {
-        /**
-         * Resolves a given path command to an absolute path based on the provided base directory.
-         *
-         * This function handles different types of paths:
-         * - Windows absolute paths (e.g., `C:\absolute\path`)
-         * - macOS/Linux absolute paths (e.g., `/absolute/path`)
-         * - Relative paths with `%~dp0` notation
-         * - Standard relative paths
-         *
-         * @param baseDir - The base directory to resolve relative paths against.
-         * @param pathCommand - The path command to resolve. It can be an absolute path, a relative path, or a path with `%~dp0` notation.
-         * @returns The resolved absolute path.
-         */
-
-        // Windows absolute paths (e.g., C:\absolute\path)
-        if (path.isAbsolute(pathCommand) && /^[a-zA-Z]:\\/.test(pathCommand)) {
-            return path.normalize(pathCommand);
-        }
-
-        // macOS/Linux absolute paths (e.g., /absolute/path)
-        if (path.isAbsolute(pathCommand) && pathCommand.startsWith("/")) {
-            return path.normalize(pathCommand);
-        }
-
-        // Handle `%~dp0` for relative paths
-        if (pathCommand.startsWith("%~dp0")) {
-            const relativePath = pathCommand.replace("%~dp0", "").trim();
-            const levelsUp = (relativePath.match(/\.\.\//g) || []).length; // Count `..`
-            const cleanedPath = relativePath
-                .replace(/\.\.\//g, "")
-                .replace(/\\/g, "/");
-
-            let resolvedBaseDir = baseDir;
-            for (let i = 0; i < levelsUp; i++) {
-                resolvedBaseDir = path.dirname(resolvedBaseDir);
-            }
-
-            return path.resolve(resolvedBaseDir, cleanedPath);
-        }
-
-        // If it's a relative path without `%~dp0`
-        return path.resolve(baseDir, pathCommand);
-    }
-
     /*========================================================
       CodeLens provider for bat files
     ========================================================*/
     //TODO: ADD SUPPORT FOR SH AND BASH FILES FOR MAC USERS
     const pathCodeLensProvider = vscode.languages.registerCodeLensProvider(
-        { scheme: "file", pattern: "**/*.{bat,sh,py}" }, // Supports .bat, .sh, and .py files
+        { scheme: "file", pattern: "**/*.{bat,sh}" }, // Supports .bat and .sh files
         {
             provideCodeLenses(document) {
-                const codeLenses = [];
+                const codeLenses: vscode.ProviderResult<vscode.CodeLens[]> = [];
                 const lines = document.getText().split("\n");
                 let currentDir = path.dirname(document.uri.fsPath); // Start with the script's directory
-                let lastResolvedPath = null; // Store the last resolved path for Python files
-    
+
                 lines.forEach((line, i) => {
                     const trimmedLine = line.trim();
-    
+
                     // Handle `%~dp0` in .bat files
                     const resolvedLine = trimmedLine.replace(/%~dp0/gi, path.dirname(document.uri.fsPath) + path.sep);
-    
+
                     // Detect `cd` commands in .bat and .sh files
                     const cdMatch = resolvedLine.match(/^cd\s+(.+)/i);
                     if (cdMatch) {
@@ -2431,9 +2501,9 @@ export async function activate(
                         const resolvedFolderPath = path.isAbsolute(pathCommand)
                             ? pathCommand // Absolute path
                             : path.resolve(currentDir, pathCommand); // Relative path
-    
+
                         const range = new vscode.Range(i, 0, i, trimmedLine.length);
-    
+
                         // Add CodeLens for `cd` commands
                         codeLenses.push(
                             new vscode.CodeLens(range, {
@@ -2443,66 +2513,21 @@ export async function activate(
                             })
                         );
                     }
-    
-                    // Detect file references in .bat, .sh, and .py files
+
+                    // Detect file references in .bat and .sh files
                     const filePathMatch = resolvedLine.match(/path\.join\((.*?)['"]([^'"]+\.\w+)['"]\)/);
                     if (filePathMatch) {
                         const fileName = filePathMatch[2]; // Extract the file name
                         const resolvedFilePath = path.resolve(currentDir, fileName); // Resolve full path
-    
+
                         const range = new vscode.Range(
                             i,
                             filePathMatch.index || 0,
                             i,
                             (filePathMatch.index || 0) + fileName.length
                         );
-    
+
                         // Add CodeLens for file references
-                        lastResolvedPath = resolvedFilePath; // Store the last resolved file path
-                        codeLenses.push(
-                            new vscode.CodeLens(range, {
-                                title: `📄 Open File: ${resolvedFilePath}`,
-                                command: "extension.openFile",
-                                arguments: [resolvedFilePath],
-                            })
-                        );
-                    }
-    
-                    // Detect Python folder paths
-                    const folderPathMatch = trimmedLine.match(/path\.join\(([^)]+)\)/);
-                    if (folderPathMatch) {
-                        const components = folderPathMatch[1]
-                            .split(",")
-                            .map((component) =>
-                                component.trim().replace(/['"]/g, "").replace("os.getcwd()", currentDir)
-                            ); // Resolve components
-                        const resolvedFolderPath = path.resolve(...components);
-    
-                        const range = new vscode.Range(i, 0, i, trimmedLine.length);
-    
-                        // Add CodeLens for Python folder paths
-                        lastResolvedPath = resolvedFolderPath; // Store the last resolved folder path
-                        codeLenses.push(
-                            new vscode.CodeLens(range, {
-                                title: `📂 Open Folder: ${resolvedFolderPath}`,
-                                command: "extension.openPath",
-                                arguments: [resolvedFolderPath],
-                            })
-                        );
-                    }
-    
-                    // Detect Python file paths
-                    const pythonFileMatch = trimmedLine.match(/(?:open|os\.path\.\w+)\((['"])(.+?)\1/);
-                    if (pythonFileMatch) {
-                        const filePath = pythonFileMatch[2]; // Extract the path inside quotes
-                        const resolvedFilePath = path.isAbsolute(filePath)
-                            ? filePath // Absolute path
-                            : path.resolve(currentDir, filePath); // Relative path
-    
-                        const range = new vscode.Range(i, 0, i, trimmedLine.length);
-    
-                        // Add CodeLens for Python file paths
-                        lastResolvedPath = resolvedFilePath; // Update the last resolved path
                         codeLenses.push(
                             new vscode.CodeLens(range, {
                                 title: `📄 Open File: ${resolvedFilePath}`,
@@ -2512,38 +2537,15 @@ export async function activate(
                         );
                     }
                 });
-               
-                let lastResolvedPathpy: string | null = null; // Explicitly type and initialize the variable
 
-                if (document.languageId === "python" && lastResolvedPathpy) {
-                    const range = new vscode.Range(0, 0, 0, 0); // Place it at the top of the file
-                
-                    // Ensure TypeScript knows lastResolvedPathpy is a string
-                    const isFile = (lastResolvedPathpy as string).endsWith(".py"); // Use type assertion for clarity
-                
-                    codeLenses.push(
-                        new vscode.CodeLens(range, {
-                            title: isFile
-                                ? `📄 Open Last Resolved File: ${lastResolvedPathpy}`
-                                : `📂 Open Last Resolved Folder: ${lastResolvedPathpy}`,
-                            command: isFile ? "extension.openFile" : "extension.openPath",
-                            arguments: [lastResolvedPathpy],
-                        })
-                    );
-                }
-                
-                
-                
-                
-    
                 return codeLenses;
             },
         }
     );
-    
-    
-    
-    
+
+
+
+
 
 
     // Command to open resolved paths (folders)

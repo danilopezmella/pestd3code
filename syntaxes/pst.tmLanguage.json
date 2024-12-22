@@ -20,6 +20,6 @@
     ]
 ,
     "repository": {},
-    "fileTypes": ["pst", "pest"],
+    "fileTypes": ["pst"],
     "name": "PEST File"
 }

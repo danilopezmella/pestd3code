@@ -1,5 +1,39 @@
 # Change Log
 
+### 0.0.8
+- **Important Note**:
+  - The Pestcheck tool is not bundled with this extension. Pestd3code requires you to have your own installation of Pestcheck.
+- **Run Pestcheck and Clear Diagnostic Buttons**:
+  - Added new buttons in the top right of the file editor to run Pestcheck and clear diagnostics using native VS Code options.
+- **Pestcheck Run with /s by Default**:
+  - When using your installed Pestcheck, it runs with the `/s` option by default for more comprehensive checks.
+- **Pestcheck Diagnostics Integration**:
+  - Results from your Pestcheck installation are now shown as diagnostics that can be tracked in the native VS Code Problems panel.
+- **Separation of Pestcheck Parsing**:
+  - Created a dedicated function to handle the parsing of your Pestcheck output, isolating it from the rest of the code for better modularity.
+- **Autoset/Find Your Pestcheck executable**:
+  - The autoset feature helps locate your installed Pestcheck executable across different operating systems.
+- **Pestcheck Webview for Raw Output**:
+  - Introduced a new webview to display raw output from your Pestcheck runs for better visualization.
+- **Output Panel**:
+  - Added an output panel to display logs, errors, and other information from your Pestcheck runs.
+- **Enhanced Error Handling**:
+  - Improved error handling mechanisms to provide more detailed and user-friendly error messages.
+- **Performance Improvements**:
+  - Optimized the extension's performance for faster load times and smoother operation.
+- **Removed Support for `.pest` Files**:
+  - Due to the new implementation, support for `.pest` files has been removed. Only `.pst` files are managed by the extension.
+- **Bug Fixes**:
+  - Resolved various bugs reported in the previous version to enhance stability and reliability.
+- **OS Agnostic Enhancements**:
+  - Improved compatibility across different operating systems to ensure consistent performance.
+- **Control Data Fixes (WIP)**:
+  - Ongoing work to fix issues related to the Control Data section for better accuracy and performance.
+- **Pestcheck Parser Enhancements (WIP)**:
+  - Additional parse options are being developed to enhance the parsing of your Pestcheck output.
+- **Model Command Line Enhancement**:
+  - Added support for handling multiple words in *model command line section, particularly useful for Python commands. The extension now creates a link using the last word as the target file path.
+
 ### 0.0.7
 
 - **Pestcheck Installation Check**:
