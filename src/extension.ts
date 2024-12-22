@@ -6,6 +6,7 @@ import { exec } from "child_process";
 import * as os from "os";
 import { spawn } from "child_process";
 import { parsePestchekOutput } from './pestchek/PestchekDiagnostics';
+import { promisify } from "util";
 
 
 // #region Type definitions
@@ -149,7 +150,7 @@ const controlDataStructure: Variable[][] = [
         },
     ],
     [
-        { name: "NOPTMAX", type: "integer", required: true },
+        { name: "NOPTMAX", type: "float", required: true },
         { name: "PHIREDSTP", type: "float", required: true },
         { name: "NPHISTP", type: "integer", required: true },
         { name: "NPHINORED", type: "integer", required: true },
@@ -383,7 +384,7 @@ async function findPestCheck(): Promise<string | null> {
     const platform = process.platform;
     const commonPaths = getCommonPaths(platform);
 
-    // 1. Intentar con comandos específicos de la plataforma
+    // 1. Try finding PestCheck using platform-specific commands
     const pathFromCommand = await findPestCheckUsingCommand(platform);
     if (pathFromCommand) {
         vscode.window.showInformationMessage(`PestCheck found using command: ${pathFromCommand}`);
@@ -391,24 +392,35 @@ async function findPestCheck(): Promise<string | null> {
         return pathFromCommand;
     }
 
-    // 2. Intentar con rutas comunes
+    // 2. Try searching common paths
     for (const commonPath of commonPaths) {
-        if (fs.existsSync(commonPath)) {
-            console.log(`PestCheck found at: ${commonPath}`);
-            const userChoice = await vscode.window.showInformationMessage(
-                `PestCheck executable found at: ${commonPath}. Do you want to use this path?`,
-                "Yes",
-                "No"
-            );
-            if (userChoice === "Yes") {
-                return commonPath;
+        try {
+            const exists = await fs.promises.access(commonPath, fs.constants.F_OK)
+                .then(() => true)
+                .catch(() => false); // Async check if path exists
+            if (exists) {
+                console.log(`PestCheck found at: ${commonPath}`);
+                const userChoice = await vscode.window.showInformationMessage(
+                    `PestCheck executable found at: ${commonPath}. Do you want to use this path?`,
+                    "Yes",
+                    "No"
+                );
+                if (userChoice === "Yes") {
+                    return commonPath;
+                }
             }
+        } catch (error) {
+            console.error(`Error checking path ${commonPath}:`, error);
         }
     }
 
-    // No encontrado
+    // 3. Not found, offer configuration options
     const warningMessage = "PestCheck executable not found using any method. Please configure it manually.";
-    const userChoice = await vscode.window.showWarningMessage(warningMessage, "Auto Set PestCheck Path", "Manual Configuration");
+    const userChoice = await vscode.window.showWarningMessage(
+        warningMessage,
+        "Auto Set PestCheck Path",
+        "Manual Configuration"
+    );
     if (userChoice === "Auto Set PestCheck Path") {
         await autoSetPestCheckPath();
     } else if (userChoice === "Manual Configuration") {
@@ -418,70 +430,109 @@ async function findPestCheck(): Promise<string | null> {
     return null;
 }
 
+
+
+
 function getCommonPaths(platform: NodeJS.Platform): string[] {
-    const commonPaths = [
+    // Define base paths common to all platforms
+    const basePaths = [
         path.join("C:", "Program Files", "Pest", "pestchek.exe"),
         path.join("C:", "Program Files (x86)", "Pest", "pestchek.exe"),
         path.join(os.homedir(), "Pest", "pestchek.exe"),
         path.join("/Applications", "Pest", "pestchek"),
         path.join("/usr/local/bin", "pestchek"),
-        path.join("/opt", "Pest", "pestchek"),
-        ...[5, 6, 7, 8, 9].map((num) => path.join("/gwv", `gwv${num}`, "pestchek")),
+        path.join("/opt", "Pest", "pestchek")
     ];
 
+    // Add `/gwv` paths
+    const gwvPaths = [5, 6, 7, 8, 9].map((num) =>
+        platform === "win32"
+            ? path.join("C:", `gwv${num}`, "pestchek.exe") // Windows-specific gwv paths
+            : path.join(`/gwv${num}`, "pestchek") // Unix-based gwv paths
+    );
+
+    // Combine base and gwv paths
+    const allPaths = [...basePaths, ...gwvPaths];
+
+    // Filter and adjust paths based on the platform
     if (platform === "win32") {
-        return commonPaths.filter(p => p.includes("C:"));
+        return allPaths
+            .filter((p) => p.startsWith("C:")) // Only include Windows paths
+            .map((p) => (p.endsWith(".exe") ? p : `${p}.exe`)); // Ensure `.exe` extension
     } else {
-        return commonPaths.filter(p => !p.includes("C:"));
+        return allPaths.filter((p) => !p.startsWith("C:")); // Exclude Windows-specific paths
     }
 }
+
+const execPromise = promisify(exec);
 
 async function findPestCheckUsingCommand(platform: NodeJS.Platform): Promise<string | null> {
     const command = platform === "win32" ? "where pestchek" : "which pestchek";
     console.log(`Trying to find pestchek using ${command}...`);
 
-    return new Promise((resolve) => {
-        exec(command, (error, stdout, stderr) => {
-            if (error || stderr) {
-                console.log(`Error or stderr from ${command}:`, error, stderr);
-                resolve(null);
-            } else {
-                const path = stdout.trim();
-                if (path) {
-                    console.log(`Found pestchek using ${command}:`, path);
-                    resolve(path);
-                } else {
-                    resolve(null);
-                }
-            }
-        });
-    });
+    try {
+        const { stdout } = await execPromise(command);
+        const paths = stdout.trim().split("\n").map((p) => p.trim()); // Handle multiple results
+        if (paths.length > 0) {
+            console.log(`Found pestchek using ${command}:`, paths[0]); // Use the first result
+            return paths[0];
+        } else {
+            console.log(`No paths found for pestchek using ${command}.`);
+            return null;
+        }
+    } catch (error) {
+        console.error(`Error executing ${command}:`, error);
+        return null;
+    }
 }
 
-async function autoSetPestCheckPath() {
+
+async function isExecutable(filePath: string): Promise<boolean> {
+    try {
+        await fs.promises.access(filePath, fs.constants.X_OK); // Ensure the file is executable
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+async function autoSetPestCheckPath(): Promise<void> {
+    console.log("Attempting to auto-detect PestCheck path...");
+
     const path = await findPestCheck();
-    if (path) {
+    if (path && await isExecutable(path)) {
         await vscode.workspace.getConfiguration("pestd3code").update("pestcheckPath", path, vscode.ConfigurationTarget.Global);
         vscode.window.showInformationMessage(`PestCheck path automatically set to: ${path}`);
-    } else {
+    } else if (!path) {
         const userChoice = await vscode.window.showWarningMessage(
-            'PestCheck executable not found. Would you like to set it manually?',
-            'Browse',
-            'Skip'
+            "PestCheck executable not found. Would you like to set it manually?",
+            "Browse",
+            "Skip"
         );
-        if (userChoice === 'Browse') {
+        if (userChoice === "Browse") {
             await browseForPestCheckPath();
         }
+    } else {
+        vscode.window.showErrorMessage(`The detected path is not executable: ${path}`);
     }
 }
 
 async function browseForPestCheckPath() {
     console.log("Opening file dialog for manual PestCheck path selection...");
+
+    const platform = process.platform;
+    const filters =
+        platform === "win32"
+            ? { Executables: ["exe"] }
+            : platform === "darwin"
+                ? { Executables: ["sh", "bin", ""] } // Limit to common macOS executable formats
+                : { Executables: ["sh", "bin", ""] }; // Linux: Common executables or no extension
+
     const selectedFile = await vscode.window.showOpenDialog({
         canSelectFiles: true,
         canSelectFolders: false,
         canSelectMany: false,
-        filters: { Executables: ["exe"] },
+        filters,
         openLabel: "Select PestCheck Executable",
     });
 
@@ -489,16 +540,54 @@ async function browseForPestCheckPath() {
         const pestcheckPath = selectedFile[0].fsPath;
         console.log("User selected PestCheck path:", pestcheckPath);
 
+        // Cross-platform validation for file executability
+        try {
+            await fs.promises.access(pestcheckPath, fs.constants.X_OK); // Check execution permissions
+        } catch {
+            if (platform !== "win32") {
+                const makeExecutable = await vscode.window.showWarningMessage(
+                    "The selected file is not executable. Would you like to make it executable?",
+                    "Yes",
+                    "No"
+                );
+
+                if (makeExecutable === "Yes") {
+                    try {
+                        await new Promise((resolve, reject) => {
+                            exec(`chmod +x "${pestcheckPath}"`, (error) => {
+                                if (error) {
+                                    reject(error);
+                                } else {
+                                    resolve(true);
+                                }
+                            });
+                        });
+                        console.log("Made file executable:", pestcheckPath);
+                    } catch (error) {
+                        console.error("Error making file executable:", error);
+                        vscode.window.showErrorMessage(
+                            "Failed to make file executable. Please set permissions manually."
+                        );
+                        return;
+                    }
+                } else {
+                    console.warn("User declined to make the file executable.");
+                    return;
+                }
+            } else {
+                vscode.window.showErrorMessage(
+                    "The selected file is not valid or inaccessible."
+                );
+                return;
+            }
+        }
+
+        // Update the configuration
         await vscode.workspace
             .getConfiguration("pestd3code")
-            .update(
-                "pestcheckPath",
-                pestcheckPath,
-                vscode.ConfigurationTarget.Global
-            );
-        vscode.window.showInformationMessage(
-            `PestCheck path set to: ${pestcheckPath}`
-        );
+            .update("pestcheckPath", pestcheckPath, vscode.ConfigurationTarget.Global);
+
+        vscode.window.showInformationMessage(`PestCheck path set to: ${pestcheckPath}`);
     } else {
         console.log("No file selected by user.");
         vscode.window.showWarningMessage("No file selected.");
@@ -550,8 +639,41 @@ export async function activate(
             const configuration = vscode.workspace.getConfiguration("pestd3code");
             let pestCheckPath = configuration.get<string>("pestcheckPath", "");
             if (!pestCheckPath || !fs.existsSync(pestCheckPath)) {
-                vscode.window.showWarningMessage("PestCheck executable path is not configured or invalid.");
-                return;
+                console.log("PestCheck path not configured or invalid, prompting user...");
+                const choice = await vscode.window.showWarningMessage(
+                    "PestCheck executable not found. Would you like to locate it?",
+                    "Auto Detect",
+                    "Browse",
+                    "Cancel"
+                );
+                switch (choice) {
+                    case "Auto Detect":
+                        console.log("Attempting automatic detection...");
+                        const foundPath = await findPestCheck();
+                        if (foundPath) {
+                            pestCheckPath = foundPath;
+                            await configuration.update("pestcheckPath", foundPath, vscode.ConfigurationTarget.Global);
+                            console.log("PestCheck found at:", pestCheckPath);
+                        } else {
+                            console.log("Automatic detection failed");
+                            return;
+                        }
+                        break;
+
+                    case "Browse":
+                        await browseForPestCheckPath(context);
+                        // Re-check configuration after browse
+                        pestCheckPath = configuration.get<string>("pestcheckPath", "");
+                        if (!pestCheckPath || !fs.existsSync(pestCheckPath)) {
+                            console.log("No valid path selected during browse");
+                            return;
+                        }
+                        break;
+
+                    default:
+                        console.log("User cancelled PestCheck configuration");
+                        return;
+                }
             }
             try {
                 const pestProcess = spawn(
@@ -608,13 +730,6 @@ export async function activate(
 
                     }
 
-
-
-
-
-
-
-
                     // Actualizar el contenido del WebView
                     rawPanel.webview.html = `
                 <html>
@@ -650,10 +765,10 @@ export async function activate(
 
                     // Separadores decorativos
                     const decorativeSeparators = {
-                        header: '🔹 ═══════════════════════════════════════ 🔹',
-                        section: '🔸 ─────────────────────────────────────── 🔸',
+                        header: '═══════════════════════════════════════',
+                        section: '───────────────────────────────────────',
                         item: '─'.repeat(40), // Cambiado de puntos a guiones largos
-                        footer: '🔹 ═══════════════════════════════════════ 🔹'
+                        footer: '═══════════════════════════════════════'
                     };
 
                     // Generar el encabezado principal
@@ -715,12 +830,16 @@ export async function activate(
                     const diagnostics = results.map(result => result.diagnostic);
                     diagnosticCollection.set(document.uri, diagnostics);
 
-
+                    // Clean up temporary file after PestCheck finishes
+                    fs.promises.unlink(tempFilePath)
+                        .then(() => console.log('Temporary file cleaned up successfully'))
+                        .catch((cleanupError) => console.error('Error cleaning up temporary file:', cleanupError));
 
                 });
             } catch (error) {
                 console.error("Error executing PestCheck:", error);
                 vscode.window.showWarningMessage(`Error running PestCheck: ${error}`);
+
                 try {
                     await fs.promises.unlink(tempFilePath);
                 } catch (error) {
@@ -735,35 +854,78 @@ export async function activate(
     }
 
 
-
-
-
-
-
     /*=======================================================
     Browse for PestCheck path
     =======================================================*/
 
     // #region Browse for PestCheck path
+
     async function browseForPestCheckPath(_context: vscode.ExtensionContext) {
         console.log("Opening file dialog for manual PestCheck path selection...");
+
+        // Determine platform-specific filters
+        const platform = process.platform;
+        const filters =
+            platform === "win32"
+                ? { Executables: ["exe"] } // Windows-specific filter for .exe files
+                : { Executables: ["", "sh", "bin"] }; // Unix-based filters (no extension, shell scripts, binaries)
+
+        // Show file dialog
         const selectedFile = await vscode.window.showOpenDialog({
             canSelectFiles: true,
             canSelectFolders: false,
             canSelectMany: false,
-            filters: { Executables: ["exe"] },
+            filters,
             openLabel: "Select PestCheck Executable",
         });
+
         if (selectedFile && selectedFile[0]) {
             const pestcheckPath = selectedFile[0].fsPath;
             console.log("User selected PestCheck path:", pestcheckPath);
+
+            // Validate executability on Unix-based platforms
+            if (platform !== "win32") {
+                try {
+                    await fs.promises.access(pestcheckPath, fs.constants.X_OK); // Check if the file is executable
+                } catch {
+                    const makeExecutable = await vscode.window.showWarningMessage(
+                        "The selected file is not executable. Would you like to make it executable?",
+                        "Yes",
+                        "No"
+                    );
+                    if (makeExecutable === "Yes") {
+                        try {
+                            await new Promise((resolve, reject) => {
+                                exec(`chmod +x "${pestcheckPath}"`, (error) => {
+                                    if (error) {
+                                        reject(error);
+                                    } else {
+                                        resolve(true);
+                                    }
+                                });
+                            });
+                            console.log("Made file executable:", pestcheckPath);
+                        } catch (error) {
+                            console.error("Error making file executable:", error);
+                            vscode.window.showErrorMessage(
+                                "Failed to make file executable. Please set permissions manually."
+                            );
+                            return;
+                        }
+                    } else {
+                        vscode.window.showErrorMessage(
+                            "The selected file is not executable and cannot be used."
+                        );
+                        return;
+                    }
+                }
+            }
+
+            // Update configuration
             await vscode.workspace
                 .getConfiguration("pestd3code")
-                .update(
-                    "pestcheckPath",
-                    pestcheckPath,
-                    vscode.ConfigurationTarget.Global
-                );
+                .update("pestcheckPath", pestcheckPath, vscode.ConfigurationTarget.Global);
+
             vscode.window.showInformationMessage(
                 `PestCheck path set to: ${pestcheckPath}`
             );
@@ -772,6 +934,7 @@ export async function activate(
             vscode.window.showWarningMessage("No file selected.");
         }
     }
+
 
     vscode.commands.registerCommand(
         "pestd3code.setPestcheckPath",
@@ -1258,6 +1421,7 @@ export async function activate(
 
                 // Si el indice de la linea es distinto de 7
                 if (indexline !== 7) {
+                    
                     // Iterar sobre la estructura de la línea
                     lineStructure.forEach((variable) => {
                         // Inicializar la variable con un valor nulo
