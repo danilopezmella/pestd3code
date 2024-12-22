@@ -1,6 +1,6 @@
 # Change Log
 
-### 0.0.8
+### 0.1.0
 - **Important Note**:
   - The Pestcheck tool is not bundled with this extension. Pestd3code requires you to have your own installation of Pestcheck.
 - **Run Pestcheck and Clear Diagnostic Buttons**:
