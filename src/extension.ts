@@ -743,7 +743,7 @@ export async function activate(
                                         rawPanel.webview.html = `
                                     <html>
                                         <body style="padding: 10px">
-                                            <h3>Raw PestCheck Output</h3>
+                                            <h3>Raw Pestcheck Output</h3>
                                             <pre style="background-color: var(--vscode-editor-background); padding: 10px">
                                                 ${output}
                                             </pre>

@@ -16,7 +16,7 @@
 - **Pestcheck Webview for Raw Output**:
   - Introduced a new webview to display raw output from your Pestcheck runs for better visualization.
 - **Output Panel**:
-  - Added an output panel to display logs, errors, and other information from your Pestcheck runs.
+  - Added an output panel to debug and display detailed logs, errors, and diagnostic information before sending them to the Problems panel.
 - **Enhanced Error Handling**:
   - Improved error handling mechanisms to provide more detailed and user-friendly error messages.
 - **Performance Improvements**:
