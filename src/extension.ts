@@ -261,7 +261,7 @@ class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
             "Control data": "🔧",
             "Singular value decomposition": "🧮",
             "Parameter groups": "📂🪨",
-            "Parameter data": "����",
+            "Parameter data": "🪨",
             "Observation groups": "📂🔍",
             "Observation data": "🔍",
             "Model command line": "💻",
@@ -2030,7 +2030,8 @@ export async function activate(
 
             // Procesar todas las líneas de datos dentro de "* parameter groups"
             if (inParameterGroups) {
-                if (trimmedLine.startsWith("*")) {
+                // Terminar la sección si encontramos * o ++
+                if (trimmedLine.startsWith("*") || trimmedLine.startsWith("++")) {
                     inParameterGroups = false;
                     continue;
                 }
@@ -2056,7 +2057,7 @@ export async function activate(
             }
         }
 
-        return allRanges; // Retornar todos los rangos y headers asociados
+        return allRanges;
     }
 
     const parameterGroupsHoverProvider = vscode.languages.registerHoverProvider(
@@ -2135,7 +2136,7 @@ export async function activate(
 
             // Procesar todas las líneas de datos dentro de "* observation groups"
             if (inObservationGroups) {
-                if (trimmedLine.startsWith("*")) {
+                if (trimmedLine.startsWith("*") || trimmedLine.startsWith("++")) {
                     inObservationGroups = false;
                     continue;
                 }
@@ -2251,7 +2252,7 @@ export async function activate(
 
             // Procesar todas las líneas de datos dentro de "* parameter data"
             if (inParameterData) {
-                if (trimmedLine.startsWith("*")) {
+                if (trimmedLine.startsWith("*") || trimmedLine.startsWith("++")) {
                     inParameterData = false;
                     continue;
                 }
@@ -2356,7 +2357,7 @@ export async function activate(
 
             // Procesar todas las líneas de datos dentro de "* observation data"
             if (inObservationData) {
-                if (trimmedLine.startsWith("*")) {
+                if (trimmedLine.startsWith("*") || trimmedLine.startsWith("++")) {
                     inObservationData = false;
                     continue;
                 }
