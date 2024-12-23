@@ -83,7 +83,7 @@
         {
             "command": "pestd3code.runPestCheck",
             "group": "navigation@1",
-            "when": "resourceExtname == .pst || rawOutputViewActive"
+            "when": "resourceExtname == .pst"
         },
         {
             "command": "pestd3code.clearDiagnostics",

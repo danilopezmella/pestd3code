@@ -13,7 +13,7 @@ function resolveFilePath(filePath: string, workspaceRoot: string): string {
         workspaceRoot,
         isAbsolute: path.isAbsolute(filePath)
     });
-    
+
     if (path.isAbsolute(filePath)) {
         return filePath;
     }
@@ -82,8 +82,8 @@ export function parsePestchekOutput(output: string): PestchekResult[] {
             continue;
         }
 
-        if (!currentSection || line === 'No errors encountered.') { 
-            continue; 
+        if (!currentSection || line === 'No errors encountered.') {
+            continue;
         }
 
         const lineMatch = line.match(/Line\s+(\d+)\s+of\s+file\s+([^:]+):/);
@@ -103,13 +103,13 @@ export function parsePestchekOutput(output: string): PestchekResult[] {
             // Start new message
             currentLineNumber = parseInt(lineMatch[1]);
             currentMessage = line.split(':')[1]?.trim() || '';
-            
+
             // Accumulate additional lines while they're not new errors
-            while (i + 1 < lines.length && 
-                   lines[i + 1].trim() && 
-                   !lines[i + 1].match(/Line\s+\d+/) &&
-                   !lines[i + 1].startsWith('Errors') &&
-                   !lines[i + 1].startsWith('Warnings')) {
+            while (i + 1 < lines.length &&
+                lines[i + 1].trim() &&
+                !lines[i + 1].match(/Line\s+\d+/) &&
+                !lines[i + 1].startsWith('Errors') &&
+                !lines[i + 1].startsWith('Warnings')) {
                 currentMessage += ' ' + lines[++i].trim();
             }
             continue;
@@ -124,11 +124,11 @@ export function parsePestchekOutput(output: string): PestchekResult[] {
             let message = line.split(':')[1]?.trim() || '';
 
             // Accumulate multiline message
-            while (i + 1 < lines.length && 
-                   lines[i + 1].trim() && 
-                   !lines[i + 1].match(/Line\s+\d+/) &&
-                   !lines[i + 1].startsWith('Errors') &&
-                   !lines[i + 1].startsWith('Warnings')) {
+            while (i + 1 < lines.length &&
+                lines[i + 1].trim() &&
+                !lines[i + 1].match(/Line\s+\d+/) &&
+                !lines[i + 1].startsWith('Errors') &&
+                !lines[i + 1].startsWith('Warnings')) {
                 message += ' ' + lines[++i].trim();
             }
 
@@ -152,7 +152,7 @@ export function parsePestchekOutput(output: string): PestchekResult[] {
         }
 
         // Accumulate additional lines to current message
-        if (currentMessage && line.trim() && 
+        if (currentMessage && line.trim() &&
             !line.startsWith('Cannot open') &&
             !line.startsWith('Errors') &&
             !line.startsWith('Warnings')) {

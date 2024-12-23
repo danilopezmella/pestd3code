@@ -700,6 +700,23 @@ export async function activate(
             }
             try {
                 const skipWarnings = configuration.get<boolean>("skipWarnings", false);
+                // Notify user if /s flag is enabled
+                if (skipWarnings) {
+                    vscode.window.showInformationMessage(
+                        'PestCheck is running with "/s" flag - some file checks and warnings will be skipped. Click here to disable.',
+                        'Show all warnings',
+                        'Keep skipping'
+                    ).then(selection => {
+                        if (selection === 'Show all warnings') {
+                            configuration.update("skipWarnings", false, vscode.ConfigurationTarget.Global)
+                                .then(() => {
+                                    vscode.window.showInformationMessage('Skip Warnings disabled. Re-running PestCheck...');
+                                    runPestCheck(document);
+                                    return; // Exit current execution
+                                });
+                        }
+                    });
+                }
                 const pestProcess = spawn(
                     pestCheckPath,
                     [`${fileNameWithoutExt}_temp`, ...(skipWarnings ? ['/s'] : [])],
@@ -721,7 +738,7 @@ export async function activate(
 
                     // Group diagnostics by file
                     const diagnosticsByFile = new Map<string, vscode.Diagnostic[]>();
-                    
+
                     results.forEach(result => {
                         const filePath = result.file || document.uri.fsPath;
                         if (!diagnosticsByFile.has(filePath)) {
@@ -809,7 +826,7 @@ export async function activate(
                         header: '═══════════════════════════════════════',
                         section: '───────────────────────────────────────',
                         item: '─'.repeat(40), // Cambiado de puntos a guiones largos
-                        footer: '��══════════════════════════════════════'
+                        footer: '═══════════════════════════════════════'
                     };
 
                     // Generar el encabezado principal
@@ -881,24 +898,64 @@ export async function activate(
 
                     // Update the WebView content
                     rawPanel.webview.html = `
-<html>
-    <body style="padding: 10px; font-family: Arial, sans-serif;">
-        <!-- Status Section -->
-        <div style="text-align: center; margin-bottom: 20px;">
-            <div style="font-size: 3rem;">${emoji}</div>
-            <div style="font-size: 1.2rem; font-weight: bold; color: var(--vscode-editor-foreground);">
-                ${statusMessage}
-            </div>
-        </div>
+                    <html>
+                        <body style="padding: 10px; font-family: Arial, sans-serif;">
+                            <!-- Status Section -->
+                            <div style="text-align: center; margin-bottom: 20px;">
+                                <div style="font-size: 3rem;">${emoji}</div>
+                                <div style="font-size: 1.2rem; font-weight: bold; color: var(--vscode-editor-foreground);">
+                                    ${statusMessage}
+                                </div>
+                            </div>
 
-        <!-- PESTCHEK Output -->
-        <h3>Raw PestCheck Output</h3>
-        <pre style="background-color: var(--vscode-editor-background); padding: 10px; border-radius: 4px;">
-            ${output}
-        </pre>
-    </body>
-</html>
-`;
+                            <!-- PESTCHEK Output -->
+                            <h3>Raw PestCheck Output</h3>
+                            <pre style="background-color: var(--vscode-editor-background); padding: 10px; border-radius: 4px;">
+                                ${output}
+                            </pre>
+                        </body>
+                    </html>
+                    `;
+
+                    // Check for messages that can be suppressed with /s flag
+                    const MAX_SUPPRESSIBLE_SUGGESTIONS = 2;
+
+                    // Check for messages that can be suppressed with /s flag
+                    const suppressibleChecks = [
+                        "is not cited in a template file",
+                        "not cited in an instruction file",
+                        "covariance matrix"
+                    ];
+
+                    // Check if there are messages that could be suppressed
+                    const hasSuppressibleWarnings = suppressibleChecks.some(phrase =>
+                        output.toLowerCase().includes(phrase.toLowerCase())
+                    );
+
+                    // Get suggestion count from global state
+                    const suggestionCount = context.globalState.get<number>('suppressibleSuggestionCount', 0);
+
+                    // If suppressible warnings are found, /s is NOT enabled, and we haven't shown too many suggestions
+                    if (hasSuppressibleWarnings &&
+                        !configuration.get<boolean>("skipWarnings", false) &&
+                        suggestionCount < MAX_SUPPRESSIBLE_SUGGESTIONS) {
+
+                        vscode.window.showInformationMessage(
+                            'These file checks can be skipped using "/s" flag. Would you like to enable Skip Warnings?',
+                            'No, keep showing them',
+                            'Yes, skip these checks'
+                        ).then(selection => {
+                            if (selection === 'Yes, skip these checks') {
+                                configuration.update("skipWarnings", true, vscode.ConfigurationTarget.Global)
+                                    .then(() => {
+                                        vscode.window.showInformationMessage('Skip Warnings enabled. Re-running PestCheck...');
+                                        runPestCheck(document);
+                                    });
+                            }
+                            // Increment suggestion count regardless of user choice
+                            context.globalState.update('suppressibleSuggestionCount', suggestionCount + 1);
+                        });
+                    }
 
 
 
@@ -1462,10 +1519,10 @@ export async function activate(
                     optionalVariables.forEach((variable) => {
                         let value: string | null = null;
                         const currentValue = values[valueIndex] || null;
-                    
+
                         console.log("Procesando variable opcional:", variable.name);
                         console.log("Valor actual:", currentValue);
-                    
+
                         // Caso especial para OBSREREF en la línea específica
                         if (variable.name === "OBSREREF" && position.line === 4) {
                             if (currentValue && ["obsreref", "obsreref_N", "noobsref"].includes(currentValue.toLowerCase())) {
@@ -1495,7 +1552,7 @@ export async function activate(
                         } else {
                             console.log(`Variable opcional ${variable.name} no encontrada, continuando...`);
                         }
-                    
+
                         if (value !== null) {
                             mappedVariables.push({
                                 name: variable.name,
@@ -1505,7 +1562,7 @@ export async function activate(
                             });
                         }
                     });
-                    
+
                 }
 
                 // Si el indice de la linea es 7
