@@ -1416,7 +1416,99 @@ export async function activate(
                 }[] = [];
                 let valueIndex = 0;
 
-                // Crea una condición if si la línea actual es la 9
+                // Si el indice de la linea es distinto de 7
+                if (indexline !== 7) {
+                    // Separar variables en requeridas y opcionales
+                    const requiredVariables = lineStructure.filter(v => v.required);
+                    const optionalVariables = lineStructure.filter(v => !v.required);
+
+                    // Procesar primero las variables requeridas
+                    requiredVariables.forEach((variable) => {
+                        let value: string | null = null;
+                        const currentValue = values[valueIndex] || null;
+
+                        console.log("Procesando variable requerida:", variable.name);
+                        console.log("Valor actual:", currentValue);
+
+                        if ("allowedValues" in variable && Array.isArray(variable.allowedValues)) {
+                            if (currentValue && variable.allowedValues.some(
+                                allowedValue => allowedValue.toLowerCase() === currentValue.toLowerCase()
+                            )) {
+                                value = currentValue;
+                                valueIndex++;
+                                console.log(`Asignado valor válido ${value} a ${variable.name}`);
+                            } else {
+                                value = "INVALID";
+                                console.log(`Valor inválido para ${variable.name}. Valores permitidos: ${variable.allowedValues.join(", ")}`);
+                            }
+                        } else if (currentValue && validateType(currentValue, variable.type as "string" | "integer" | "float")) {
+                            value = currentValue;
+                            valueIndex++;
+                            console.log(`Asignado valor numérico ${value} a ${variable.name}`);
+                        } else {
+                            value = "MISSING";
+                            console.log(`Variable requerida ${variable.name} está ausente.`);
+                        }
+
+                        mappedVariables.push({
+                            name: variable.name,
+                            value,
+                            valid: value !== "MISSING" && value !== "INVALID" && value !== null,
+                            id: mappedVariables.filter(v => v.value === value).length + 1
+                        });
+                    });
+
+                    // Procesar las variables opcionales
+                    optionalVariables.forEach((variable) => {
+                        let value: string | null = null;
+                        const currentValue = values[valueIndex] || null;
+                    
+                        console.log("Procesando variable opcional:", variable.name);
+                        console.log("Valor actual:", currentValue);
+                    
+                        // Caso especial para OBSREREF en la línea específica
+                        if (variable.name === "OBSREREF" && position.line === 4) {
+                            if (currentValue && ["obsreref", "obsreref_N", "noobsref"].includes(currentValue.toLowerCase())) {
+                                value = currentValue;
+                                valueIndex++;
+                                console.log(`Asignado valor válido ${value} a OBSREREF`);
+                            } else {
+                                value = "INVALID";
+                                console.log(`Valor inválido para OBSREREF. Valores permitidos: obsreref, obsreref_N, noobsreref`);
+                            }
+                        } else if ("allowedValues" in variable && Array.isArray(variable.allowedValues)) {
+                            // Validación general para valores permitidos
+                            const validValue = values.slice(valueIndex).find(
+                                (v) => variable.allowedValues.some(
+                                    allowedValue => allowedValue.toLowerCase() === v.toLowerCase()
+                                )
+                            );
+                            if (validValue) {
+                                value = validValue;
+                                valueIndex = values.indexOf(validValue) + 1;
+                                console.log(`Asignado valor válido ${value} a ${variable.name}`);
+                            }
+                        } else if (currentValue && validateType(currentValue, variable.type as "string" | "integer" | "float")) {
+                            value = currentValue;
+                            valueIndex++;
+                            console.log(`Asignado valor numérico ${value} a ${variable.name}`);
+                        } else {
+                            console.log(`Variable opcional ${variable.name} no encontrada, continuando...`);
+                        }
+                    
+                        if (value !== null) {
+                            mappedVariables.push({
+                                name: variable.name,
+                                value,
+                                valid: true,
+                                id: mappedVariables.filter(v => v.value === value).length + 1
+                            });
+                        }
+                    });
+                    
+                }
+
+                // Si el indice de la linea es 7
                 if (indexline === 7) {
                     // Separate numbers and words
                     const numbers = values.filter((value) => !isNaN(Number(value)));

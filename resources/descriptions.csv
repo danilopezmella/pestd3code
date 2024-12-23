@@ -14,7 +14,7 @@
 13,13,control data,NUMCOM,integer,greater than zero,number of command lines used to run model,3,5,optional,,,,,
 14,14,control data,JACFILE,integer,0  1 or -1,indicates whether model provides external derivatives file,3,6,optional,,,,,
 15,15,control data,MESSFILE,integer,zero or one, indicates whether PEST writes PEST-to-model message file,3,7,optional,,,,,
-16,16,control data,OBSREREF,text,“obsreref”, “obsreref_N” or “noobsreref” activates or de-activates observation re-referencing (with an optional pause after re-referencing runs),3,8,optional,,,,,
+16,16,control data,OBSREREF,text,“obsreref” “obsreref_N” or “noobsreref”, activates or de-activates observation re-referencing (with an optional pause after re-referencing runs),3,8,optional,,,,,
 17,17,control data,RLAMBDA1,real,zero or greater,initial Marquardt lambda,4,1,required,,,,,
 18,18,control data,RLAMFAC,real,positive or negative but not zero,dictates Marquardt lambda adjustment process,4,2,required,,,,,
 19,19,control data,PHIRATSUF,real,between zero and one,fractional objective function sufficient for end of current iteration,4,3,required,,,,,
