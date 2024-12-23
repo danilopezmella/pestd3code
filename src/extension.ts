@@ -826,7 +826,7 @@ export async function activate(
                         header: '═══════════════════════════════════════',
                         section: '───────────────────────────────────────',
                         item: '─'.repeat(40), // Cambiado de puntos a guiones largos
-                        footer: '═══════════════════════════════════════'
+                        footer: '════════════════════════════════════��══'
                     };
 
                     // Generar el encabezado principal
@@ -2771,17 +2771,39 @@ export async function activate(
     const hoverProviderPlus = vscode.languages.registerHoverProvider(
         { scheme: "file" },
         {
-            provideHover(document, position) {
-                const line = document.lineAt(position.line).text;
-                const match = line.match(/\+\+(\w+)(?:\([^)]*\))?/);
-                const word = match ? match[1] : undefined;
+            async provideHover(document, position) {
+                // Get all symbols from the document
+                const symbolProvider = new PestDocumentSymbolProvider();
+                const symbols = await symbolProvider.provideDocumentSymbols(document, new vscode.CancellationTokenSource().token);
+                
+                if (!symbols) {
+                    return null;
+                }
 
-                console.log(`Variable: ${word}`);
+                // Find which symbol's range contains our position
+                const currentSymbol = symbols.find(symbol => 
+                    symbol.location.range.contains(position) &&
+                    symbol.name.includes("PEST++")  // Verifica que sea una sección PEST++
+                );
 
+                // Only proceed if we're in a PEST++ section
+                if (!currentSymbol) {
+                    return null;
+                }
+
+                // Get the word under cursor
+                const wordRange = document.getWordRangeAtPosition(position);
+                if (!wordRange) {
+                    return null;
+                }
+                
+                const word = document.getText(wordRange);
                 const description = descriptions.find((desc) => desc.Variable === word);
+                
                 if (!description) {
                     return null;
                 }
+
                 return new vscode.Hover(
                     new vscode.MarkdownString(
                         `### 🏷️ Variable: **${description.Variable}**\n\n` +
