@@ -261,7 +261,7 @@ class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
             "Control data": "🔧",
             "Singular value decomposition": "🧮",
             "Parameter groups": "📂🪨",
-            "Parameter data": "🪨",
+            "Parameter data": "����",
             "Observation groups": "📂🔍",
             "Observation data": "🔍",
             "Model command line": "💻",
@@ -826,7 +826,7 @@ export async function activate(
                         header: '═══════════════════════════════════════',
                         section: '───────────────────────────────────────',
                         item: '─'.repeat(40), // Cambiado de puntos a guiones largos
-                        footer: '════════════════════════════════════��══'
+                        footer: '═════════════════���══════════════════��══'
                     };
 
                     // Generar el encabezado principal
@@ -2443,7 +2443,6 @@ export async function activate(
     // #region Prior Information CodeLens and Hover
     function parsePriorInformation(document: vscode.TextDocument) {
         const headers = ["PILBL", "PIFAC", "PARNME", "PIVAL", "WEIGHT", "OBGNME"];
-
         const lines = document.getText().split("\n");
         const allRanges: { range: vscode.Range; header: string }[] = [];
         let inPriorInformation = false;
@@ -2460,24 +2459,23 @@ export async function activate(
 
             // Procesar todas las líneas de datos dentro de "* prior information"
             if (inPriorInformation) {
-                if (trimmedLine.startsWith("*")) {
+                // Terminar la sección si encontramos * o ++
+                if (trimmedLine.startsWith("*") || trimmedLine.startsWith("++")) {
                     inPriorInformation = false;
                     continue;
                 }
 
-                // Filtrar palabras relevantes excluyendo operadores como "*", "log"
+                // Resto del código igual...
                 const columnMatches = Array.from(
-                    line.matchAll(/[a-zA-Z0-9_.]+/g) // Capturar solo palabras relevantes
+                    line.matchAll(/[a-zA-Z0-9_.]+/g)
                 ).filter((match) => !["*", "log"].includes(match[0]));
 
-                // Validar palabras y asociarlas con encabezados
                 let headerIndex = 0;
                 columnMatches.forEach((match) => {
                     const word = match[0];
                     const startIndex = match.index!;
                     const endIndex = startIndex + word.length;
 
-                    // Asociar solo si hay un encabezado disponible
                     if (headers[headerIndex]) {
                         const wordRange = new vscode.Range(
                             new vscode.Position(i, startIndex),
@@ -2485,13 +2483,13 @@ export async function activate(
                         );
 
                         allRanges.push({ range: wordRange, header: headers[headerIndex] });
-                        headerIndex++; // Avanzar al siguiente encabezado
+                        headerIndex++;
                     }
                 });
             }
         }
 
-        return allRanges; // Retornar todos los rangos y headers asociados
+        return allRanges;
     }
 
     const PriorInformationHoverProvider = vscode.languages.registerHoverProvider(
@@ -2897,4 +2895,10 @@ function getRelativePath(filePath: string, workspaceRoot: string): string {
     // Remove any leading slash and normalize path
     const normalizedPath = filePath.replace(/^[\/\\]+/, '');
     return path.relative(workspaceRoot, normalizedPath);
+}
+
+// Helper function to check if a line starts a new section (either * or ++)
+function isNewSection(line: string): boolean {
+    const trimmedLine = line.trim();
+    return trimmedLine.startsWith('*') || trimmedLine.startsWith('++');
 }
