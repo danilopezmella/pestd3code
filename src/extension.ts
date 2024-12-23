@@ -2896,9 +2896,3 @@ function getRelativePath(filePath: string, workspaceRoot: string): string {
     const normalizedPath = filePath.replace(/^[\/\\]+/, '');
     return path.relative(workspaceRoot, normalizedPath);
 }
-
-// Helper function to check if a line starts a new section (either * or ++)
-function isNewSection(line: string): boolean {
-    const trimmedLine = line.trim();
-    return trimmedLine.startsWith('*') || trimmedLine.startsWith('++');
-}
