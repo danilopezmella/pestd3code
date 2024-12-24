@@ -636,6 +636,17 @@ export async function activate(
     context: vscode.ExtensionContext
 ): Promise<void> {
 
+    const SESSION_MAX_SUPPRESSIBLE_SUGGESTIONS = 2;
+
+    // Reset counter when a .pst file is closed
+    context.subscriptions.push(
+        vscode.workspace.onDidCloseTextDocument(async (document) => {
+            if (document.fileName.endsWith('.pst')) {
+                await context.workspaceState.update('suppressibleSuggestionCount', 0);
+                console.log(`Reset suggestion count - .pst file closed: ${document.fileName}`);
+            }
+        })
+    );
 
 
     // true = preservar foco
@@ -826,7 +837,7 @@ export async function activate(
                         header: '═══════════════════════════════════════',
                         section: '───────────────────────────────────────',
                         item: '─'.repeat(40), // Cambiado de puntos a guiones largos
-                        footer: '═════════════════���══════════════════��══'
+                        footer: '═══════════════════════════════════════'
                     };
 
                     // Generar el encabezado principal
@@ -918,8 +929,7 @@ export async function activate(
                     `;
 
                     // Check for messages that can be suppressed with /s flag
-                    const MAX_SUPPRESSIBLE_SUGGESTIONS = 2;
-
+                    const SESSION_MAX_SUPPRESSIBLE_SUGGESTIONS = 2;
                     // Check for messages that can be suppressed with /s flag
                     const suppressibleChecks = [
                         "is not cited in a template file",
@@ -932,19 +942,24 @@ export async function activate(
                         output.toLowerCase().includes(phrase.toLowerCase())
                     );
 
-                    // Get suggestion count from global state
-                    const suggestionCount = context.globalState.get<number>('suppressibleSuggestionCount', 0);
+                    // Get suggestion count from workspace state (por sesión)
+                    const suggestionCount = context.workspaceState.get<number>('suppressibleSuggestionCount', 0);
+                    console.log('Current suggestion count:', suggestionCount);
+                    console.log('Has suppressible warnings:', hasSuppressibleWarnings);
+                    console.log('Skip warnings enabled:', configuration.get<boolean>("skipWarnings", false));
 
-                    // If suppressible warnings are found, /s is NOT enabled, and we haven't shown too many suggestions
+             
+                    // If suppressible warnings are found, /s is NOT enabled, and we haven't shown too many suggestions this session
                     if (hasSuppressibleWarnings &&
                         !configuration.get<boolean>("skipWarnings", false) &&
-                        suggestionCount < MAX_SUPPRESSIBLE_SUGGESTIONS) {
+                        suggestionCount < SESSION_MAX_SUPPRESSIBLE_SUGGESTIONS) {
 
                         vscode.window.showInformationMessage(
                             'These file checks can be skipped using "/s" flag. Would you like to enable Skip Warnings?',
                             'No, keep showing them',
                             'Yes, skip these checks'
                         ).then(selection => {
+                            console.log('User selected:', selection);
                             if (selection === 'Yes, skip these checks') {
                                 configuration.update("skipWarnings", true, vscode.ConfigurationTarget.Global)
                                     .then(() => {
@@ -952,12 +967,16 @@ export async function activate(
                                         runPestCheck(document);
                                     });
                             }
-                            // Increment suggestion count regardless of user choice
-                            context.globalState.update('suppressibleSuggestionCount', suggestionCount + 1);
+                            // Increment suggestion count per session
+                            const newCount = suggestionCount + 1;
+                            console.log('Updating suggestion count to:', newCount);
+                            context.workspaceState.update('suppressibleSuggestionCount', newCount);
                         });
+                    } else {
+                        console.log('Conditions not met for showing warning:');
+                        console.log('- hasSuppressibleWarnings:', hasSuppressibleWarnings);
+                        console.log('- skipWarnings:', !configuration.get<boolean>("skipWarnings", false));
                     }
-
-
 
                     // Clean up temporary file after PestCheck finishes
                     fs.promises.unlink(tempFilePath)
@@ -2774,13 +2793,13 @@ export async function activate(
                 // Get all symbols from the document
                 const symbolProvider = new PestDocumentSymbolProvider();
                 const symbols = await symbolProvider.provideDocumentSymbols(document, new vscode.CancellationTokenSource().token);
-                
+
                 if (!symbols) {
                     return null;
                 }
 
                 // Find which symbol's range contains our position
-                const currentSymbol = symbols.find(symbol => 
+                const currentSymbol = symbols.find(symbol =>
                     symbol.location.range.contains(position) &&
                     symbol.name.includes("PEST++")  // Verifica que sea una sección PEST++
                 );
@@ -2795,10 +2814,10 @@ export async function activate(
                 if (!wordRange) {
                     return null;
                 }
-                
+
                 const word = document.getText(wordRange);
                 const description = descriptions.find((desc) => desc.Variable === word);
-                
+
                 if (!description) {
                     return null;
                 }
