@@ -948,7 +948,7 @@ export async function activate(
                     console.log('Has suppressible warnings:', hasSuppressibleWarnings);
                     console.log('Skip warnings enabled:', configuration.get<boolean>("skipWarnings", false));
 
-             
+
                     // If suppressible warnings are found, /s is NOT enabled, and we haven't shown too many suggestions this session
                     if (hasSuppressibleWarnings &&
                         !configuration.get<boolean>("skipWarnings", false) &&
