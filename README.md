@@ -81,17 +81,32 @@ The **most important feature** of this extension is that it works **WITHOUT** mo
 
 ## Features Demonstration
 
-Watch our feature demonstration video to see PestD3code in action:
+<div align="left">
+
+### 💻 Interface Overview
+
+### 🎯 Main Features at a Glance
+
+| Feature | Description |
+|---------|-------------|
+| **📑 Outline Panel** | Navigate through sections with custom icons for quick access |
+| **🎨 Syntax Highlighting** | Custom color scheme for different PEST elements (sections, variables, values) |
+| **ℹ️ Hover Information** | Detailed tooltips for variables, parameters, and PEST++ attributes |
+| **🔍 PESTcheck Integration** | Run diagnostics with a click and view results in an integrated webview |
+| **📚 PEST++ Manual** | Built-in markdown manual accessible directly from the editor |
+| **🔗 Smart Links** | Auto-generated clickable links for file references |
+| **📂 Collapsible Sections** | Fold/unfold sections for better file organization |
+
+![PestD3code Interface](media/pestd3code1.png)
+
+> Visual Studio Code extension for PEST control files with intelligent tooltips and diagnostics
+
+### 🎬 Video Tutorial
 
 [![PestD3code Feature Demo](https://vumbnail.com/1042042647.jpg)](https://vimeo.com/1042042647)
 
-> 🎥 Click the image above to watch the full demonstration video
-
-See how PestD3code can help you:
-- Navigate through PEST control files with ease
-- Get instant information with hover tooltips
-- Use Pestcheck integration for diagnostics
-- Access linked files and documentation quickly
+> ▶️ Click the image above to watch the full demonstration video
+</div>
 
 ## Requirements
 
