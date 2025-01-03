@@ -10,6 +10,10 @@ import { promisify } from "util";
 
 
 // #region Type definitions
+
+// Constantes globales
+const SESSION_MAX_SUPPRESSIBLE_SUGGESTIONS = 1;
+
 type DescriptionData = {
     controlid: string;
     itemid: string;
@@ -22,6 +26,11 @@ type DescriptionData = {
     Position: string;
     Mandatory: string;
 };
+
+interface FileWarningState {
+    suppressWarnings: boolean;
+    warningCount: number;
+}
 
 let disposables: vscode.Disposable[] = [];
 
@@ -611,6 +620,57 @@ async function browseForPestCheckPath() {
 
 // #region RUN PESTCHEK! The good stuff starts here
 
+async function handleSkipWarningMessage(
+    document: vscode.TextDocument,
+    context: vscode.ExtensionContext,
+    configuration: vscode.WorkspaceConfiguration
+): Promise<boolean> {
+    const documentPath = document.uri.fsPath;
+    const suppressedFiles = context.workspaceState.get<string[]>('suppressedWarningFiles', []);
+    const fileWarningStates = context.workspaceState.get<Record<string, FileWarningState>>('fileWarningStates', {});
+    
+    // Inicializar o obtener el estado del archivo actual
+    if (!fileWarningStates[documentPath]) {
+        fileWarningStates[documentPath] = {
+            suppressWarnings: false,
+            warningCount: 0
+        };
+    }
+
+    const showSkipWarningMessage = !suppressedFiles.includes(documentPath) && 
+                                 fileWarningStates[documentPath].warningCount < SESSION_MAX_SUPPRESSIBLE_SUGGESTIONS;
+
+    if (showSkipWarningMessage) {
+        const selection = await vscode.window.showWarningMessage(
+            'Warning: PestCheck is running with /s flag which will stop warnings and template/instruction/cov matrix file checking. Continue?',
+            {
+                modal: false,
+                detail: 'This affects template, instruction and coverage matrix file checking.'
+            },
+            'No, show all warnings',
+            'Yes, keep skipping',
+            "Don't show this message again"
+        );
+
+        // Incrementar el contador de advertencias para este archivo
+        fileWarningStates[documentPath].warningCount++;
+        await context.workspaceState.update('fileWarningStates', fileWarningStates);
+
+        if (selection === 'No, show all warnings') {
+            await configuration.update("skipWarnings", false, vscode.ConfigurationTarget.Global);
+            vscode.window.showInformationMessage('Skip Warnings disabled. Re-running PestCheck...');
+            return false;
+        } else if (selection === "Don't show this message again") {
+            suppressedFiles.push(documentPath);
+            await context.workspaceState.update('suppressedWarningFiles', suppressedFiles);
+            vscode.window.showInformationMessage(
+                'To change skip warnings setting later, go to Settings (Ctrl+,) and search for "Pestd3code: Skip Warnings"'
+            );
+        }
+    }
+    return true;
+}
+
 let timeout: NodeJS.Timeout | undefined;
 let diagnosticCollection: vscode.DiagnosticCollection | undefined;
 
@@ -636,14 +696,21 @@ export async function activate(
     context: vscode.ExtensionContext
 ): Promise<void> {
 
-    const SESSION_MAX_SUPPRESSIBLE_SUGGESTIONS = 2;
-
     // Reset counter when a .pst file is closed
     context.subscriptions.push(
         vscode.workspace.onDidCloseTextDocument(async (document) => {
             if (document.fileName.endsWith('.pst')) {
                 await context.workspaceState.update('suppressibleSuggestionCount', 0);
-                console.log(`Reset suggestion count - .pst file closed: ${document.fileName}`);
+                // Limpiar este archivo de la lista de archivos suprimidos y su estado
+                const suppressedFiles = context.workspaceState.get<string[]>('suppressedWarningFiles', []);
+                const fileWarningStates = context.workspaceState.get<Record<string, FileWarningState>>('fileWarningStates', {});
+                
+                const updatedFiles = suppressedFiles.filter(file => file !== document.uri.fsPath);
+                delete fileWarningStates[document.uri.fsPath];
+                
+                await context.workspaceState.update('suppressedWarningFiles', updatedFiles);
+                await context.workspaceState.update('fileWarningStates', fileWarningStates);
+                console.log(`Reset warning states - .pst file closed: ${document.fileName}`);
             }
         })
     );
@@ -711,23 +778,14 @@ export async function activate(
             }
             try {
                 const skipWarnings = configuration.get<boolean>("skipWarnings", false);
-                // Notify user if /s flag is enabled
+                
                 if (skipWarnings) {
-                    vscode.window.showInformationMessage(
-                        'PestCheck is running with "/s" flag - some file checks and warnings will be skipped. Click here to disable.',
-                        'Show all warnings',
-                        'Keep skipping'
-                    ).then(selection => {
-                        if (selection === 'Show all warnings') {
-                            configuration.update("skipWarnings", false, vscode.ConfigurationTarget.Global)
-                                .then(() => {
-                                    vscode.window.showInformationMessage('Skip Warnings disabled. Re-running PestCheck...');
-                                    runPestCheck(document);
-                                    return; // Exit current execution
-                                });
-                        }
-                    });
+                    const shouldContinue = await handleSkipWarningMessage(document, context, configuration);
+                    if (!shouldContinue) {
+                        return runPestCheck(document);
+                    }
                 }
+
                 const pestProcess = spawn(
                     pestCheckPath,
                     [`${fileNameWithoutExt}_temp`, ...(skipWarnings ? ['/s'] : [])],
@@ -929,7 +987,7 @@ export async function activate(
                     `;
 
                     // Check for messages that can be suppressed with /s flag
-                    const SESSION_MAX_SUPPRESSIBLE_SUGGESTIONS = 2;
+                    const SESSION_MAX_SUPPRESSIBLE_SUGGESTIONS = 1;
                     // Check for messages that can be suppressed with /s flag
                     const suppressibleChecks = [
                         "is not cited in a template file",
@@ -959,24 +1017,30 @@ export async function activate(
                         suggestionCount < SESSION_MAX_SUPPRESSIBLE_SUGGESTIONS) {
 
                         vscode.window.showInformationMessage(
-                            'These file checks can be skipped using "/s" flag. Would you like to enable Skip Warnings?',
-                            'No, keep showing them',
-                            'Yes, skip these checks',
-                        ).then(selection => {
+                            'Would you like to try skipping checks using Pestcheck "/s" flag?',
+                            'No, keep showing warnings',
+                            'Yes, try skipping warnings',
+                            "Don't show this suggestion again"
+                        ).then(async selection => {
                             console.log('User selected:', selection);
-                            if (selection === 'Yes, skip these checks') {
-                                configuration.update("skipWarnings", true, vscode.ConfigurationTarget.Global)
-                                    .then(() => {
-                                        vscode.window.showInformationMessage('Skip Warnings enabled. Re-running PestCheck...');
-                                        runPestCheck(document);
-                                    });
+                            if (selection === 'Yes, try skipping warnings') {
+                                await configuration.update("skipWarnings", true, vscode.ConfigurationTarget.Global);
+                                vscode.window.showInformationMessage('Skip Warnings enabled. Re-running PestCheck...');
+                                runPestCheck(document);
+                            } else if (selection === "Don't show this suggestion again") {
+                                const suppressedFiles = context.workspaceState.get<string[]>('suppressedWarningFiles', []);
+                                suppressedFiles.push(document.uri.fsPath);
+                                await context.workspaceState.update('suppressedWarningFiles', suppressedFiles);
+                                vscode.window.showInformationMessage(
+                                    'To change skip warnings setting later, go to Settings (Ctrl+,) and search for "Pestd3code: Skip Warnings"'
+                                );
                             }
                             // Increment suggestion count per session
                             const newCount = suggestionCount + 1;
                             console.log('Updating suggestion count to:', newCount);
-                            context.workspaceState.update('suppressibleSuggestionCount', newCount);
+                            await context.workspaceState.update('suppressibleSuggestionCount', newCount);
                         });
-                    } else {
+                    } else { 
                         console.log('Conditions not met for showing warning:');
                         console.log('- hasSuppressibleWarnings:', hasSuppressibleWarnings);
                         console.log('- skipWarnings:', !configuration.get<boolean>("skipWarnings", false));
@@ -2906,6 +2970,7 @@ export async function activate(
     context.subscriptions.push(obsDataHoverProvider);
     context.subscriptions.push(PriorInformationCodeLensProvider);
     context.subscriptions.push(PriorInformationHoverProvider);
+
     // #endregion Putting it all together
 }
 // #endregion MAIN EXTENSION ACTIVATION FUNCTION
