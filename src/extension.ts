@@ -934,7 +934,11 @@ export async function activate(
                     const suppressibleChecks = [
                         "is not cited in a template file",
                         "not cited in an instruction file",
-                        "covariance matrix"
+                        "covariance matrix",
+                        "NOPTMAX provided as -2.",
+                        "NOPTMAX provided as -1.",
+                        "NOPTMAX provided as 0",
+                        "MAXSING in the singular value decomposition section is greater than the"
                     ];
 
                     // Check if there are messages that could be suppressed
@@ -957,7 +961,7 @@ export async function activate(
                         vscode.window.showInformationMessage(
                             'These file checks can be skipped using "/s" flag. Would you like to enable Skip Warnings?',
                             'No, keep showing them',
-                            'Yes, skip these checks'
+                            'Yes, skip these checks',
                         ).then(selection => {
                             console.log('User selected:', selection);
                             if (selection === 'Yes, skip these checks') {
