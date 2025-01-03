@@ -81,14 +81,17 @@ The **most important feature** of this extension is that it works **WITHOUT** mo
 
 ## Features Demonstration
 
-### 1. Folding sections, color coding, and hover tooltips for Control Data, SVD, etc.
-<img src="media/video_1.gif" alt="Folding sections and colors" width="432">
+Watch our feature demonstration video to see PestD3code in action:
 
-### 2. Clickable links to files in model command lines and input/output sections
-<img src="media/video_2.gif" alt="Hover and quick access to sections" width="432">
+[![PestD3code Feature Demo](https://vumbnail.com/1042042647.jpg)](https://vimeo.com/1042042647)
 
-### 3. Embedded PEST++ manual for instant access and interactive table of contents
-<img src="media/video_3.gif" alt="Manual and PEST++ variable hover and detection" width="432">
+> 🎥 Click the image above to watch the full demonstration video
+
+See how PestD3code can help you:
+- Navigate through PEST control files with ease
+- Get instant information with hover tooltips
+- Use Pestcheck integration for diagnostics
+- Access linked files and documentation quickly
 
 ## Requirements
 
