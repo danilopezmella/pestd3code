@@ -64,6 +64,7 @@ export function parsePestchekOutput(output: string): PestchekResult[] {
     let currentSection: 'ERROR' | 'WARNING' | null = null;
     let currentMessage: string | null = null;
     let currentLineNumber: number | null = null;
+    let isCollectingMultilineMessage = false;
 
     const lines = output.split('\n').map(l => l.trim());
     console.log('Processing lines:', lines);
@@ -74,11 +75,28 @@ export function parsePestchekOutput(output: string): PestchekResult[] {
         // Skip empty lines and version info
         if (!line || line.startsWith('PESTCHEK Version')) {
             continue;
-        } else if (line === 'Errors ----->') {
+        }
+
+        // Detect section changes
+        if (line === 'Errors ----->') {
+            // If we were collecting a warning message, add it before changing sections
+            if (currentSection === 'WARNING' && currentMessage) {
+                results.push(createDiagnostic(
+                    'WARNING',
+                    currentMessage.trim(),
+                    currentLineNumber ? {
+                        start: { line: currentLineNumber - 1, character: 0 },
+                        end: { line: currentLineNumber - 1, character: Number.MAX_VALUE }
+                    } : undefined
+                ));
+                currentMessage = null;
+            }
             currentSection = 'ERROR';
+            isCollectingMultilineMessage = false;
             continue;
         } else if (line === 'Warnings ----->') {
             currentSection = 'WARNING';
+            isCollectingMultilineMessage = false;
             continue;
         }
 
@@ -100,30 +118,30 @@ export function parsePestchekOutput(output: string): PestchekResult[] {
                 ));
             }
 
-            // Start new message
             currentLineNumber = parseInt(lineMatch[1]);
             currentMessage = line.split(':')[1]?.trim() || '';
-
-            // Accumulate additional lines while they're not new errors
-            while (i + 1 < lines.length &&
-                lines[i + 1].trim() &&
-                !lines[i + 1].match(/Line\s+\d+/) &&
-                !lines[i + 1].startsWith('Errors') &&
-                !lines[i + 1].startsWith('Warnings')) {
-                currentMessage += ' ' + lines[++i].trim();
-            }
+            isCollectingMultilineMessage = true;
             continue;
         }
 
         // Handle instruction file errors
         const instructionMatch = line.match(/Line\s+(\d+)\s+of\s+instruction\s+file\s+([^:]+):/);
         if (instructionMatch) {
-            console.log('Found instruction file error:', line);
+            if (currentMessage && currentSection) {
+                results.push(createDiagnostic(
+                    currentSection,
+                    currentMessage.trim(),
+                    currentLineNumber ? {
+                        start: { line: currentLineNumber - 1, character: 0 },
+                        end: { line: currentLineNumber - 1, character: Number.MAX_VALUE }
+                    } : undefined
+                ));
+            }
+
             const lineNum = parseInt(instructionMatch[1]);
             const insFile = instructionMatch[2];
             let message = line.split(':')[1]?.trim() || '';
 
-            // Accumulate multiline message
             while (i + 1 < lines.length &&
                 lines[i + 1].trim() &&
                 !lines[i + 1].match(/Line\s+\d+/) &&
@@ -131,12 +149,6 @@ export function parsePestchekOutput(output: string): PestchekResult[] {
                 !lines[i + 1].startsWith('Warnings')) {
                 message += ' ' + lines[++i].trim();
             }
-
-            console.log('Creating diagnostic for instruction file:', {
-                lineNum,
-                insFile,
-                message
-            });
 
             results.push(createDiagnostic(
                 'ERROR',
@@ -148,19 +160,24 @@ export function parsePestchekOutput(output: string): PestchekResult[] {
                 undefined,
                 insFile
             ));
+            currentMessage = null;
+            isCollectingMultilineMessage = false;
             continue;
-        }
-
-        // Accumulate additional lines to current message
-        if (currentMessage && line.trim() &&
-            !line.startsWith('Cannot open') &&
-            !line.startsWith('Errors') &&
-            !line.startsWith('Warnings')) {
-            currentMessage += ' ' + line.trim();
         }
 
         // Handle "Cannot open" errors
         if (line.startsWith('Cannot open')) {
+            if (currentMessage && currentSection) {
+                results.push(createDiagnostic(
+                    currentSection,
+                    currentMessage.trim(),
+                    currentLineNumber ? {
+                        start: { line: currentLineNumber - 1, character: 0 },
+                        end: { line: currentLineNumber - 1, character: Number.MAX_VALUE }
+                    } : undefined
+                ));
+            }
+
             results.push(createDiagnostic(
                 'ERROR',
                 line + (lines[i + 1]?.trim().startsWith('observation group') ? ' ' + lines[++i].trim() : ''),
@@ -169,6 +186,34 @@ export function parsePestchekOutput(output: string): PestchekResult[] {
                     end: { line: 0, character: Number.MAX_VALUE }
                 }
             ));
+            currentMessage = null;
+            isCollectingMultilineMessage = false;
+            continue;
+        }
+
+        // Handle general warnings and multiline messages
+        if (currentSection === 'WARNING') {
+            if (!isCollectingMultilineMessage && line.trim()) {
+                // Start a new warning message
+                if (currentMessage) {
+                    results.push(createDiagnostic('WARNING', currentMessage.trim()));
+                }
+                currentMessage = line;
+                isCollectingMultilineMessage = true;
+            } else if (isCollectingMultilineMessage && line.trim()) {
+                // Continue collecting multiline message
+                currentMessage = (currentMessage || '') + ' ' + line.trim();
+            } else if (isCollectingMultilineMessage && !line.trim()) {
+                // Empty line marks end of multiline message
+                if (currentMessage) {
+                    results.push(createDiagnostic('WARNING', currentMessage.trim()));
+                    currentMessage = null;
+                    isCollectingMultilineMessage = false;
+                }
+            }
+        } else if (isCollectingMultilineMessage && line.trim()) {
+            // Continue collecting multiline message for other types
+            currentMessage = (currentMessage || '') + ' ' + line.trim();
         }
     }
 
