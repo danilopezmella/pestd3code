@@ -17,96 +17,52 @@ The **most important feature** of this extension is that it works **WITHOUT** mo
 
 ---
 
-## New Features in Version 0.1.0
-
-### 🎯 **Integration with Pestcheck**
-- **OS-Agnostic Support:** Automatically locate your installed Pestcheck executable across different operating systems.
-- **Run Pestcheck Directly:** Use new buttons in the file editor to run Pestcheck and display diagnostics in the Problems panel.
-- **Detailed Visuals:** View raw Pestcheck output in a dedicated webview for better insights.
-
-### 📂 **Enhanced File Interaction**
-- Added support for handling multi-word entries in the Model Command Line section, improving compatibility with commands like Python scripts.
-- Improved clickable links for file paths.
-
-### 🔍 **Diagnostics and Debugging**
-- Enhanced error handling to provide detailed and user-friendly messages.
-- Added an output panel to debug and display logs, errors, and diagnostics before sending them to the Problems panel.
-
-### 🌐 **Performance and Compatibility**
-- Optimized performance for faster load times and smoother operation.
-- Improved compatibility across operating systems.
-- Removed support for `.pest` files to focus on `.pst` files exclusively.
-
----
-
-## Features
-
-### 🎨 Visual Enhancements
-
-- **Hover Tooltips:**
-  - Provides detailed descriptions of PEST control variables with Markdown-formatted tooltips.
-  - Includes variable descriptions, types, allowed values, and whether the variable is mandatory.
-  - Specific colors for sections, floats, strings, and integers for easy visualization.
-
-- **Collapsible Sections:**
-  - Collapse or expand sections of the PEST control file for easier navigation and organization.
-
-- **Outline Panel Integration:**
-  - Navigate through the file effortlessly using the Outline panel with icons for each section.
-
-### 📂 File Interaction
-
-- **Clickable File Paths:**
-  - File paths in the **Model Input/Output** and **Model Command Line** sections are clickable.
-  - Clicking a file path opens the file in the system's default editor (if the file exists).
-  - If the file does not exist, the extension notifies the user to help identify missing or incorrect paths.
-
-### 📖 Quick Access to PEST Manual
-
-- A quick link to the PEST manual is included in the first line of the file, opening the manual in a parallel window for easy reference.
-
-### 📝 Section Descriptions
-
-- **Parameter Group Descriptions:**
-  - Provides hover descriptions for the **Parameter Groups** section, explaining group-specific settings and options.
-
-- **Parameter Data, Observation Group, and Observation Data Values:**
-  - Brief explanations of values in each section.
-  - Hover over each section of these parameters for the code value.
-
-### 🧩 Pest++ Instructions
-
-- **Hover Tooltips for Pest++ Attributes:**
-  - Hover over Pest++ attributes to see code for each variable and description.
-
 ## Features Demonstration
 
-<div align="left">
+<div align="center">
 
-### 💻 Interface Overview
+### 🎥 Video Tutorial
 
-### 🎯 Main Features at a Glance
-
-| Feature | Description |
-|---------|-------------|
-| **📑 Outline Panel** | Navigate through sections with custom icons for quick access |
-| **🎨 Syntax Highlighting** | Custom color scheme for different PEST elements (sections, variables, values) |
-| **ℹ️ Hover Information** | Detailed tooltips for variables, parameters, and PEST++ attributes |
-| **🔍 PESTcheck Integration** | Run diagnostics with a click and view results in an integrated webview |
-| **📚 PEST++ Manual** | Built-in markdown manual accessible directly from the editor |
-| **🔗 Smart Links** | Auto-generated clickable links for file references |
-| **📂 Collapsible Sections** | Fold/unfold sections for better file organization |
-
-![PestD3code Interface](media/pestd3code1.png)
-
-> Visual Studio Code extension for PEST control files with intelligent tooltips and diagnostics
-
-### 🎬 Video Tutorial
-
-[![PestD3code Feature Demo](https://vumbnail.com/1042042647.jpg)](https://vimeo.com/1042042647)
+[![PestD3code Feature Demo](https://vumbnail.com/1043970324.jpg)](https://vimeo.com/1043970324)
 
 > ▶️ Click the image above to watch the full demonstration video
 </div>
+
+## Features
+
+### 🔍 Smart Navigation & Interface
+- **Outline Panel:** Navigate through sections with custom icons for quick access
+- **Collapsible Sections:** Collapse/expand sections for better organization
+- **Color Coding:** Specific colors for sections, floats, strings, and integers
+- **Modern UI:** Clean and intuitive interface design
+
+### 💡 Intelligent Assistance
+- **Hover Tooltips:** Detailed descriptions of PEST control variables
+- **Context Help:** Access variable descriptions and requirements instantly
+- **Value Validation:** View allowed values and data types
+- **Smart Suggestions:** Get helpful hints while editing
+
+### 🛠️ PestCheck Integration
+- **OS-Agnostic Support:** Auto-locate Pestcheck across different operating systems
+- **One-Click Diagnostics:** Run checks directly from VS Code
+- **Visual Feedback:** View diagnostics in Problems panel and dedicated webview
+- **Smart Warnings:** Intelligent handling of suppressible warnings with `/s` flag
+- **Real-time Notifications:** Instant feedback on errors and warnings
+
+### 📂 File Management & Documentation
+- **Smart Links:** Clickable file paths in Model Input/Output sections
+- **Path Validation:** Automatic verification of file existence
+- **Multi-word Support:** Enhanced handling of commands with spaces
+- **Quick Manual:** Instant access to PEST manual from the editor
+- **Section Guides:** Detailed descriptions for all PEST components
+- **PEST++ Support:** Complete tooltips for all PEST++ attributes
+
+### 🔧 Development Features
+- **Enhanced Debugging:** Detailed error messages and logging
+- **Output Panel:** Dedicated diagnostic information
+- **Cross-Platform:** Optimized for all operating systems
+- **TypeScript Stack:** Built with modern VS Code APIs
+- **Regular Updates:** Continuous improvements and bug fixes
 
 ## Requirements
 
