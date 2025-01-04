@@ -43,11 +43,6 @@
           "type": "boolean",
           "default": false,
           "description": "Skip warnings and template/instruction/coverage matrix file checking (/s flag)"
-        },
-        "pestd3code.showSkipWarningMessage": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show confirmation message when running PestCheck with /s flag"
         }
       }
     },
