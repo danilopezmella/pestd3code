@@ -1,6 +1,29 @@
 # Change Log
 
 ### 0.1.0
+- **Enhanced Skip Warnings Configuration**:
+  - Added a new feature to handle skip warnings configuration more effectively. Users can now choose to skip warnings, show all warnings, or never show the skip warnings message again.
+  - Improved user interaction with detailed messages and options for better control over the warning settings.
+
+- **Improved Diagnostic Collection**:
+  - Enhanced the diagnostic collection process to provide more accurate and detailed error messages.
+  - Added a dedicated output channel for PestCheck results and raw output to help users debug and understand the diagnostics better.
+
+- **Temporary File Handling**:
+  - Implemented a mechanism to create and manage temporary files for PestCheck runs, ensuring the original `.pst` files remain unmodified.
+  - Added console logs to track the creation and processing of temporary files for better transparency.
+
+- **User Interaction Enhancements**:
+  - Improved user prompts and messages for better clarity and guidance during PestCheck configuration and execution.
+  - Added detailed console logs to provide insights into the decision-making process and actions taken by the extension.
+
+- **Bug Fixes and Performance Improvements**:
+  - Fixed various bugs related to file handling, configuration updates, and diagnostic collection.
+  - Optimized the extension's performance for faster execution and smoother user experience.
+
+- **Documentation Updates**:
+  - Updated the README and CHANGELOG files to reflect the latest changes and improvements in the extension.
+  - Added detailed descriptions and examples to help users understand and utilize the new features effectively.
 - **Important Note**:
   - The Pestcheck tool is not bundled with this extension. Pestd3code requires you to have your own installation of Pestcheck
 - **Run Pestcheck and Clear Diagnostic Buttons**:
