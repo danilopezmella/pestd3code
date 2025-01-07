@@ -1,7 +1,7 @@
 # PestD3code
 
 ![Build Status](https://github.com/danilopezmella/pestd3code/actions/workflows/ci.yml/badge.svg)
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
+![Version](https://img.shields.io/badge/version-0.1.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)
 
@@ -100,6 +100,6 @@ This extension adheres to the best practices outlined in the Visual Studio Code 
 
 ## Contact
 
-For inquiries, feedback, or support, please contact me at **[gwm@gwmodels.cl](mailto:gwm@gwmodels.cl)**.
+For inquiries, feedback, or support, please message me on LinkedIn: [www.linkedin.com/in/dlz800](https://www.linkedin.com/in/dlz800)
 
 **Thank you for using PestD3code!**

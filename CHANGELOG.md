@@ -1,5 +1,7 @@
 # Change Log
 
+### 0.1.1
+- Contact information updated in README.md
 ### 0.1.0
 - **Enhanced Skip Warnings Configuration**:
   - Added a new feature to handle skip warnings configuration more effectively. Users can now choose to skip warnings, show all warnings, or never show the skip warnings message again.
