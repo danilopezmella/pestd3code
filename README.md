@@ -23,7 +23,7 @@ The **most important feature** of this extension is that it works **WITHOUT** mo
 
 ### 🎥 Video Tutorial
 
-[![PestD3code Feature Demo](https://vumbnail.com/1043970324.jpg)](https://vimeo.com/1043970324)
+[![PestD3code Feature Demo](https://vumbnail.com/1045433698.jpg)](https://vimeo.com/1045433698)
 
 > ▶️ Click the image above to watch the full demonstration video
 </div>
