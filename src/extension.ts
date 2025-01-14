@@ -50,6 +50,21 @@ type VariableWithoutAllowedValues = {
 };
 
 type Variable = VariableWithAllowedValues | VariableWithoutAllowedValues;
+
+// We only expect "integer" or "float" on line 3. 
+// (If you need "string", add it.)
+// Expand the union
+type VarTypeLine3 = "string" | "integer" | "float";
+
+// An interface specific to line 3 variables:
+export interface VariableLine3Def {
+    name: string;
+    required: boolean;
+    type: VarTypeLine3; // must be either "integer" or "float"
+    minValue?: number;  // optional minimum value constraint
+    description?: string; // optional description
+}
+
 // #endregion Type definitions
 
 // #region Load descriptions from CSV file
@@ -76,52 +91,20 @@ async function loadDescriptions(
 // #region Define the structure of the PEST control file
 const controlDataStructure: Variable[][] = [
     [
-        {
-            name: "RSTFLE",
-            type: "string",
-            required: true,
-            allowedValues: ["restart", "norestart"],
-        },
-        {
-            name: "PESTMODE",
-            type: "string",
-            required: true,
-            allowedValues: [
-                "estimation",
-                "prediction",
-                "regularization",
-                "pareto",
-                "regularisation",
-            ],
-        },
-    ],
-    [
         { name: "NPAR", type: "integer", required: true },
         { name: "NOBS", type: "integer", required: true },
         { name: "NPARGP", type: "integer", required: true },
         { name: "NPRIOR", type: "integer", required: true },
         { name: "NOBSGP", type: "integer", required: true },
         { name: "MAXCOMPDIM", type: "integer", required: false },
+        { name: "DERZEROLIM", type: "float", required: false },
     ],
     [
         { name: "NTPLFLE", type: "integer", required: true },
         { name: "NINSFLE", type: "integer", required: true },
-        {
-            name: "PRECIS",
-            type: "string",
-            required: true,
-            allowedValues: ["single", "double"],
-        },
-        {
-            name: "DPOINT",
-            type: "string",
-            required: true,
-            allowedValues: ["point", "nopoint"],
-        },
         { name: "NUMCOM", type: "integer", required: false, },
         { name: "JACFILE", type: "integer", required: false },
         { name: "MESSFILE", type: "integer", required: false },
-        { name: "OBSREREF", type: "string", required: false, allowedValues: ["obsreref", "obsreref_N", "noobsreref"] },
     ],
     [
         { name: "RLAMBDA1", type: "float", required: true },
@@ -130,18 +113,7 @@ const controlDataStructure: Variable[][] = [
         { name: "PHIREDLAM", type: "float", required: true },
         { name: "NUMLAM", type: "float", required: true },
         { name: "JACUPDATE", type: "integer", required: false },
-        {
-            name: "LAMFORGIVE",
-            type: "string",
-            required: false,
-            allowedValues: ["lamforgive", "nolamforgive"],
-        },
-        {
-            name: "DERFORGIVE",
-            type: "string",
-            required: false,
-            allowedValues: ["derforgive", "noderforgive"],
-        },
+        
     ],
     [
         { name: "RELPARMAX", type: "float", required: true },
@@ -161,8 +133,6 @@ const controlDataStructure: Variable[][] = [
             required: false,
             allowedValues: ["aui", "noaui"],
         },
-        { name: "DOSENREUSE", type: "string", required: false, allowedValues: ["senreuse", "nosenreuse"] },
-        { name: "BOUNDSCALE", type: "string", required: false, allowedValues: ["boundscale", "noboundscale"] }
     ],
     [
         { name: "NOPTMAX", type: "float", required: true },
@@ -181,12 +151,6 @@ const controlDataStructure: Variable[][] = [
         { name: "ICOR", type: "integer", required: true },
         { name: "IEIG", type: "integer", required: true },
         { name: "IRES", type: "integer", required: true },
-        {
-            name: "REISAVEITN",
-            type: "string",
-            required: false,
-            allowedValues: ["reisaveitn", "noreisaveitn"],
-        },
         {
             name: "JCOSAVE",
             type: "string",
@@ -219,6 +183,25 @@ const controlDataStructure: Variable[][] = [
             allowedValues: ["parsaverun", "noparsaverun"],
         },
     ],
+];
+
+// lineStructure for line 3
+// GOOD: 'type' is "integer" for numeric fields
+// GOOD: 'type' is "integer" for numeric fields
+
+export const controlDataLine2Structure = [
+    { name: "RSTFLE", required: true, type: "string", allowedValues: ["restart", "norestart"] },
+    { name: "PESTMODE", required: true, type: "string", allowedValues: ["estimation", "prediction", "regularization", "regularisation", "pareto"] }
+];
+
+const controlDataLine3Structure = [
+    { name: "NPAR",       required: true, type: "integer" },
+    { name: "NOBS",       required: true, type: "integer" },
+    { name: "NPARGP",     required: true, type: "integer" },
+    { name: "NPRIOR",     required: true, type: "integer" },
+    { name: "NOBSGP",     required: true, type: "integer" },
+    { name: "MAXCOMPDIM", required: false, type: "integer" },
+    { name: "DERZEROLIM", required: false, type: "float" }
 ];
 
 const svdDataStructure = [
@@ -382,19 +365,32 @@ class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 // #region Validate type of the variable
 function validateType(
     value: string,
-    type: "string" | "integer" | "float"
+    type: "string" | "integer" | "float",
+    allowedValues?: string[]
 ): boolean {
-    // Primero validar si es un número para integer/float
+    console.log(`Validating Type: Value="${value}", Type=${type}`);
+    
     if (type === "integer") {
-        return /^-?\d+$/.test(value) && !isNaN(parseInt(value));
+        const isInteger = /^-?\d+$/.test(value);
+        console.log(`Validation result: ${isInteger}`);
+        return isInteger;
+    } else if (type === "float") {
+        const isFloat = /^-?\d*\.?\d+$/.test(value);
+        console.log(`Validation result: ${isFloat}`);
+        return isFloat;
+    } else if (type === "string") {
+        if (allowedValues && allowedValues.length > 0) {
+            const isValid = allowedValues.includes(value.toLowerCase());
+            console.log(`Validating string against allowed values: ${allowedValues.join(", ")}`);
+            console.log(`Validation result: ${isValid}`);
+            return isValid;
+        }
+        // Si no hay allowedValues, cualquier string es válido
+        console.log(`Validation result: true (no allowed values specified)`);
+        return true;
     }
-    if (type === "float") {
-        return /^-?\d+(\.\d+)?(e[-+]?\d+)?$/i.test(value) && !isNaN(parseFloat(value));
-    }
-    // Para strings, validar que NO sea un número
-    if (type === "string") {
-        return isNaN(Number(value)) || value.trim() === "";
-    }
+    
+    console.log(`Validation result: false (unknown type)`);
     return false;
 }
 // #endregion Validate type of the variable
@@ -628,7 +624,7 @@ async function handleSkipWarningMessage(
     const documentPath = document.uri.fsPath;
     const suppressedFiles = context.workspaceState.get<string[]>('suppressedWarningFiles', []);
     const fileWarningStates = context.workspaceState.get<Record<string, FileWarningState>>('fileWarningStates', {});
-    
+
     // Inicializar o obtener el estado del archivo actual
     if (!fileWarningStates[documentPath]) {
         fileWarningStates[documentPath] = {
@@ -637,8 +633,8 @@ async function handleSkipWarningMessage(
         };
     }
 
-    const showSkipWarningMessage = !suppressedFiles.includes(documentPath) && 
-                                 fileWarningStates[documentPath].warningCount < SESSION_MAX_SUPPRESSIBLE_SUGGESTIONS;
+    const showSkipWarningMessage = !suppressedFiles.includes(documentPath) &&
+        fileWarningStates[documentPath].warningCount < SESSION_MAX_SUPPRESSIBLE_SUGGESTIONS;
 
     if (showSkipWarningMessage) {
         const selection = await vscode.window.showWarningMessage(
@@ -704,10 +700,10 @@ export async function activate(
                 // Limpiar este archivo de la lista de archivos suprimidos y su estado
                 const suppressedFiles = context.workspaceState.get<string[]>('suppressedWarningFiles', []);
                 const fileWarningStates = context.workspaceState.get<Record<string, FileWarningState>>('fileWarningStates', {});
-                
+
                 const updatedFiles = suppressedFiles.filter(file => file !== document.uri.fsPath);
                 delete fileWarningStates[document.uri.fsPath];
-                
+
                 await context.workspaceState.update('suppressedWarningFiles', updatedFiles);
                 await context.workspaceState.update('fileWarningStates', fileWarningStates);
                 console.log(`Reset warning states - .pst file closed: ${document.fileName}`);
@@ -778,7 +774,7 @@ export async function activate(
             }
             try {
                 const skipWarnings = configuration.get<boolean>("skipWarnings", false);
-                
+
                 if (skipWarnings) {
                     const shouldContinue = await handleSkipWarningMessage(document, context, configuration);
                     if (!shouldContinue) {
@@ -1025,8 +1021,8 @@ export async function activate(
                             console.log('User selected:', selection);
                             if (selection === 'Yes, try skipping warnings') {
                                 await configuration.update("skipWarnings", true, vscode.ConfigurationTarget.Global);
-                                vscode.window.showInformationMessage('Skip Warnings enabled. Re-running PestCheck...');
-                                runPestCheck(document);
+                                        vscode.window.showInformationMessage('Skip Warnings enabled. Re-running PestCheck...');
+                                        runPestCheck(document);
                             } else if (selection === "Don't show this suggestion again") {
                                 const suppressedFiles = context.workspaceState.get<string[]>('suppressedWarningFiles', []);
                                 suppressedFiles.push(document.uri.fsPath);
@@ -1040,7 +1036,7 @@ export async function activate(
                             console.log('Updating suggestion count to:', newCount);
                             await context.workspaceState.update('suppressibleSuggestionCount', newCount);
                         });
-                    } else { 
+                    } else {
                         console.log('Conditions not met for showing warning:');
                         console.log('- hasSuppressibleWarnings:', hasSuppressibleWarnings);
                         console.log('- skipWarnings:', !configuration.get<boolean>("skipWarnings", false));
@@ -1488,599 +1484,991 @@ export async function activate(
     ========================================================*/
 
     // #region Hover provider for control data and SVD sections
+
     const hoverProvider = vscode.languages.registerHoverProvider(
         { scheme: "file" },
         {
             provideHover(document, position) {
                 const lines = document.getText().split("\n");
+                const sections = detectSections(lines);
+                const currentSection = findCurrentSection(sections, position.line);
 
-                // Detectar sección actual
-                const sections: { parent: string; start: number; end: number }[] = [];
-                lines.forEach((line, index) => {
-                    const trimmed = line.trim().toLowerCase();
-                    if (trimmed.startsWith("*")) {
-                        sections.push({
-                            parent: trimmed.substring(1).trim(),
-                            start: index,
-                            end:
-                                lines.findIndex(
-                                    (l, i) => i > index && l.trim().startsWith("*")
-                                ) || lines.length,
-                        });
-                    }
-                });
-
-                const currentSection = sections.find(
-                    (section) =>
-                        position.line > section.start && position.line < section.end
-                );
-
-                // Verificar si estamos en una sección reconocida
-                if (
-                    !currentSection ||
-                    (currentSection.parent !== "control data" &&
-                        currentSection.parent !== "singular value decomposition")
-                ) {
-                    return null; // No estamos en una sección reconocida
+                if (!isRecognizedSection(currentSection)) {
+                    return null;
                 }
 
-                // Seleccionar la estructura adecuada según la sección
-                const structure =
-                    currentSection.parent === "control data"
-                        ? controlDataStructure
-                        : svdDataStructure;
+                const structure = getStructureForSection(currentSection);
+                if (!structure || !currentSection) {
+                    return null;
+                }
 
-                // Obtener la estructura de la línea actual
+                // Ajustamos el índice para que coincida con la estructura de control data
                 const relativeLine = position.line - currentSection.start - 1;
-                const lineStructure = structure[relativeLine];
-                // Crea un indice para la línea actual
+                console.log(`Position Line: ${position.line}`);
+                console.log(`Section Start: ${currentSection.start}`);
+                console.log(`Relative Line (adjusted): ${relativeLine}`);
+
+                // Si el índice es negativo o no hay estructura para esa línea, retornamos null
+                if (relativeLine < 0) {
+                    console.log('Índice negativo detectado, ignorando línea de encabezado');
+                    return null;
+                }
+
+                // Seleccionar la estructura correcta según la línea
+                let lineStructure;
+                if (relativeLine === 0) {
+                    lineStructure = [
+                        { name: "RSTFLE", required: true, type: "string", order: 1, allowedValues: ["restart", "norestart"] },
+                        { name: "PESTMODE", required: true, type: "string", order: 2, allowedValues: ["estimation", "prediction", "regularization", "regularisation", "pareto"] }
+                    ];
+                } else if (relativeLine === 1) {
+                    lineStructure = [
+                        { name: "NPAR", required: true, type: "integer", order: 1 },
+                        { name: "NOBS", required: true, type: "integer", order: 2 },
+                        { name: "NPARGP", required: true, type: "integer", order: 3 },
+                        { name: "NPRIOR", required: true, type: "integer", order: 4 },
+                        { name: "NOBSGP", required: true, type: "integer", order: 5 },
+                        { name: "MAXCOMPDIM", required: false, type: "integer" },
+                        { name: "DERZEROLIM", required: false, type: "float" }
+                    ];
+                } else if (relativeLine === 2) {
+                    // Line 4: NTPLFLE  NINSFLE  PRECIS  DPOINT [NUMCOM JACFILE MESSFILE] [OBSREREF]
+                    lineStructure = [
+                        // Required variables
+                        { name: "NTPLFLE", required: true, type: "integer", order: 1 },
+                        { name: "NINSFLE", required: true, type: "integer", order: 2 },
+                        { name: "PRECIS", required: true, type: "string", order: 3, allowedValues: ["single", "double"] },
+                        { name: "DPOINT", required: true, type: "string", order: 4, allowedValues: ["point", "nopoint"] },
+                        // Optional variables - numeric
+                        { name: "NUMCOM", required: false, type: "integer" },
+                        { name: "JACFILE", required: false, type: "integer", allowedValues: ["0", "1", "-1"] },
+                        { name: "MESSFILE", required: false, type: "integer", allowedValues: ["0", "1"] },
+                        // Optional variables - string
+                        { name: "OBSREREF", required: false, type: "string", allowedValues: ["obsreref", "obsreref_N", "noobsreref"] }
+                    ];
+                } else if (relativeLine === 3) {
+                    // Line 5: RLAMBDA1  RLAMFAC  PHIRATSUF  PHIREDLAM  NUMLAM [JACUPDATE] [LAMFORGIVE] [DERFORGIVE]
+                    lineStructure = [
+                        // Required variables
+                        { name: "RLAMBDA1", required: true, type: "float", order: 1 },
+                        { name: "RLAMFAC", required: true, type: "float", order: 2 },
+                        { name: "PHIRATSUF", required: true, type: "float", order: 3 },
+                        { name: "PHIREDLAM", required: true, type: "float", order: 4 },
+                        { name: "NUMLAM", required: true, type: "integer", order: 5 },
+                        // Optional variables - numeric
+                        { name: "JACUPDATE", required: false, type: "integer" },
+                        // Optional variables - string
+                        { name: "LAMFORGIVE", required: false, type: "string", allowedValues: ["lamforgive", "nolamforgive"] },
+                        { name: "DERFORGIVE", required: false, type: "string", allowedValues: ["derforgive", "noderforgive"] }
+                    ];
+                } else if (relativeLine === 4) {
+                    // Line 6: RELPARMAX  FACPARMAX  FACORIG [IBOUNDSTICK UPVECBEND] [ABSPARMAX]
+                    lineStructure = [
+                        // Required variables
+                        { name: "RELPARMAX", required: true, type: "float", order: 1 },
+                        { name: "FACPARMAX", required: true, type: "float", order: 2 },
+                        { name: "FACORIG", required: true, type: "float", order: 3 },
+                        // Optional variables - all numeric
+                        { name: "IBOUNDSTICK", required: false, type: "integer" },
+                        { name: "UPVECBEND", required: false, type: "integer", allowedValues: ["0", "1"] },
+                        { name: "ABSPARMAX", required: false, type: "float" }
+                    ];
+                } else if (relativeLine === 5) {
+                    // Line 7: PHIREDSWH [NOPTSWITCH] [SPLITSWH] [DOAUI] [DOSENREUSE] [BOUNDSCALE]
+                    lineStructure = [
+                        // Required variable first - PHIREDSWH (float)
+                        { name: "PHIREDSWH", required: true, type: "float", order: 1 },
+                        // Process optional variables
+                        { name: "NOPTSWITCH", required: false, type: "integer", order: 2 },
+                        { name: "SPLITSWH", required: false, type: "float", order: 3 },
+                        { name: "DOAUI", required: false, type: "string", order: 4, allowedValues: ["aui", "auid", "noaui"] },
+                        { name: "DOSENREUSE", required: false, type: "string", order: 5, allowedValues: ["senreuse", "nosenreuse"] },
+                        { name: "BOUNDSCALE", required: false, type: "string", order: 6, allowedValues: ["boundscale", "noboundscale"] }
+                    ];
+                } else if (relativeLine === 6) {
+                    // Line 8: NOPTMAX PHIREDSTP NPHISTP NPHINORED RELPARSTP NRELPAR [PHISTOPTHRESH] [LASTRUN] [PHIABANDON]
+                    lineStructure = [
+                        // Required variables
+                        { name: "NOPTMAX", required: true, type: "integer", order: 1 },
+                        { name: "PHIREDSTP", required: true, type: "float", order: 2 },
+                        { name: "NPHISTP", required: true, type: "integer", order: 3 },
+                        { name: "NPHINORED", required: true, type: "integer", order: 4 },
+                        { name: "RELPARSTP", required: true, type: "float", order: 5 },
+                        { name: "NRELPAR", required: true, type: "integer", order: 6 },
+                        // Optional variables
+                        { name: "PHISTOPTHRESH", required: false, type: "float" },
+                        { name: "LASTRUN", required: false, type: "integer", allowedValues: ["0", "1"] },
+                        { name: "PHIABANDON", required: false, type: "float" }
+                    ];
+                } else if (relativeLine === 7) {
+                    // Line 9: ICOV ICOR IEIG [IRES] [JCOSAVE] [VERBOSEREC] [JCOSAVEITN] [REISAVEITN] [PARSAVEITN] [PARSAVERUN]
+                    lineStructure = [
+                        // Required variables
+                        { name: "ICOV", required: true, type: "integer", order: 1, allowedValues: ["0", "1"] },
+                        { name: "ICOR", required: true, type: "integer", order: 2, allowedValues: ["0", "1"] },
+                        { name: "IEIG", required: true, type: "integer", order: 3, allowedValues: ["0", "1"] },
+                        // Optional variables
+                        { name: "IRES", required: false, type: "integer", allowedValues: ["0", "1"] },
+                        { name: "JCOSAVE", required: false, type: "string", allowedValues: ["jcosave", "nojcosave"] },
+                        { name: "VERBOSEREC", required: false, type: "string", allowedValues: ["verboserec", "noverboserec"] },
+                        { name: "JCOSAVEITN", required: false, type: "string", allowedValues: ["jcosaveitn", "nojcosaveitn"] },
+                        { name: "REISAVEITN", required: false, type: "string", allowedValues: ["reisaveitn", "noreisaveitn"] },
+                        { name: "PARSAVEITN", required: false, type: "string", allowedValues: ["parsaveitn", "noparsaveitn"] },
+                        { name: "PARSAVERUN", required: false, type: "string", allowedValues: ["parsaverun", "noparsaverun"] }
+                    ];
+                }
+
                 const indexline = relativeLine;
-                // Imprime el indice de la línea actual
-                console.log(`Índice de la línea actual: ${indexline + 2}`);
 
                 if (!lineStructure) {
-                    return null; // Línea fuera de la definición
-                }
-                if (!structure) {
-                    return null; // Línea fuera de la definición
-                }
-
-                const line = document.lineAt(position.line).text.trim();
-                const values = line.split(/\s+/); // Dividir en palabras
-
-                console.log(`Línea: ${line}`); // Log de la línea actual
-                console.log(`Valores detectados: ${values.join(", ")}`); // Valores detectados
-
-                // Mapear variables de la línea
-                const mappedVariables: {
-                    name: string;
-                    value: string | null;
-                    valid: boolean;
-                    id: number;
-                }[] = [];
-                let valueIndex = 0;
-
-                // Si el indice de la linea es distinto de 7
-                if (indexline !== 7) {
-                    // Separar variables en requeridas y opcionales
-                    const requiredVariables = lineStructure.filter(v => v.required);
-                    const optionalVariables = lineStructure.filter(v => !v.required);
-
-                    // Procesar primero las variables requeridas
-                    requiredVariables.forEach((variable) => {
-                        let value: string | null = null;
-                        const currentValue = values[valueIndex] || null;
-
-                        console.log("Procesando variable requerida:", variable.name);
-                        console.log("Valor actual:", currentValue);
-
-                        if ("allowedValues" in variable && Array.isArray(variable.allowedValues)) {
-                            if (currentValue && variable.allowedValues.some(
-                                allowedValue => allowedValue.toLowerCase() === currentValue.toLowerCase()
-                            )) {
-                                value = currentValue;
-                                valueIndex++;
-                                console.log(`Asignado valor válido ${value} a ${variable.name}`);
-                            } else {
-                                value = "INVALID";
-                                console.log(`Valor inválido para ${variable.name}. Valores permitidos: ${variable.allowedValues.join(", ")}`);
-                            }
-                        } else if (currentValue && validateType(currentValue, variable.type as "string" | "integer" | "float")) {
-                            value = currentValue;
-                            valueIndex++;
-                            console.log(`Asignado valor numérico ${value} a ${variable.name}`);
-                        } else {
-                            value = "MISSING";
-                            console.log(`Variable requerida ${variable.name} está ausente.`);
-                        }
-
-                        mappedVariables.push({
-                            name: variable.name,
-                            value,
-                            valid: value !== "MISSING" && value !== "INVALID" && value !== null,
-                            id: mappedVariables.filter(v => v.value === value).length + 1
-                        });
-                    });
-
-                    // Procesar las variables opcionales
-                    optionalVariables.forEach((variable) => {
-                        let value: string | null = null;
-                        const currentValue = values[valueIndex] || null;
-
-                        console.log("Procesando variable opcional:", variable.name);
-                        console.log("Valor actual:", currentValue);
-
-                        // Caso especial para OBSREREF en la línea específica
-                        if (variable.name === "OBSREREF" && position.line === 4) {
-                            if (currentValue && ["obsreref", "obsreref_N", "noobsref"].includes(currentValue.toLowerCase())) {
-                                value = currentValue;
-                                valueIndex++;
-                                console.log(`Asignado valor válido ${value} a OBSREREF`);
-                            } else {
-                                value = "INVALID";
-                                console.log(`Valor inválido para OBSREREF. Valores permitidos: obsreref, obsreref_N, noobsreref`);
-                            }
-                        } else if ("allowedValues" in variable && Array.isArray(variable.allowedValues)) {
-                            // Validación general para valores permitidos
-                            const validValue = values.slice(valueIndex).find(
-                                (v) => variable.allowedValues.some(
-                                    allowedValue => allowedValue.toLowerCase() === v.toLowerCase()
-                                )
-                            );
-                            if (validValue) {
-                                value = validValue;
-                                valueIndex = values.indexOf(validValue) + 1;
-                                console.log(`Asignado valor válido ${value} a ${variable.name}`);
-                            }
-                        } else if (currentValue && validateType(currentValue, variable.type as "string" | "integer" | "float")) {
-                            value = currentValue;
-                            valueIndex++;
-                            console.log(`Asignado valor numérico ${value} a ${variable.name}`);
-                        } else {
-                            console.log(`Variable opcional ${variable.name} no encontrada, continuando...`);
-                        }
-
-                        if (value !== null) {
-                            mappedVariables.push({
-                                name: variable.name,
-                                value,
-                                valid: true,
-                                id: mappedVariables.filter(v => v.value === value).length + 1
-                            });
-                        }
-                    });
-
-                }
-
-                // Si el indice de la linea es 7
-                if (indexline === 7) {
-                    // Separate numbers and words
-                    const numbers = values.filter((value) => !isNaN(Number(value)));
-                    const words = values.filter((value) => isNaN(Number(value)));
-
-                    // Map variables from the line
-                    const mappedVariables: {
-                        name: string;
-                        value: string | null;
-                        valid: boolean;
-                        id: number;
-                    }[] = [];
-                    let numberIndex = 0;
-
-                    lineStructure.forEach((variable) => {
-                        let value: string | null = null;
-
-                        // Assign required variables from numbers
-                        if (variable.required) {
-                            if (numberIndex < numbers.length) {
-                                value = numbers[numberIndex];
-                                numberIndex++;
-                                //      console.log(Assigned numeric value ${value} to ${variable.name});
-                            } else {
-                                value = "MISSING";
-                                //    console.log(Required variable ${variable.name} is missing.);
-                            }
-                        } else {
-                            // Assign optional variables from words
-                            const optionalValueIndex = words.findIndex(
-                                (word) => word.toLowerCase() === variable.name.toLowerCase()
-                            );
-                            if (optionalValueIndex !== -1) {
-                                value = words[optionalValueIndex];
-                                //  console.log(Assigned optional value ${value} to ${variable.name});
-                            }
-                        }
-
-                        // Add to mapped variables
-                        const repetitions = mappedVariables.filter(
-                            (v) => v.value === value
-                        ).length;
-                        mappedVariables.push({
-                            name: variable.name,
-                            value,
-                            valid: value !== "MISSING" && value !== null,
-                            id: repetitions + 1,
-                        });
-                    });
-
-                    //  console.log(Mapped variables: ${JSON.stringify(mappedVariables)});
-
-                    // Determine the word under the cursor
-                    const wordRange = document.getWordRangeAtPosition(position, /[^\s]+/); // Match anything that is not a space
-
-                    if (!wordRange) {
-                        console.log("No word detected under the cursor.");
-                        return null;
-                    }
-
-                    const word = document.getText(wordRange);
-                    //   console.log(Detected word: "${word}");
-
-                    const lineUpToCursor9 = document.getText(
-                        new vscode.Range(
-                            position.line,
-                            0,
-                            position.line,
-                            position.character
-                        )
-                    );
-                    const wordsBeforeCursor = lineUpToCursor9.trimStart().split(/\s+/);
-                    const wordOccurrences = wordsBeforeCursor.filter(
-                        (w) => w === word
-                    ).length;
-
-                    // console.log(The word "${word}" has appeared ${wordOccurrences} times before the cursor.);
-
-                    const variableInfo = mappedVariables.find(
-                        (v) => v.value === word && v.id === wordOccurrences + 1
-                    );
-
-                    function getHoverContent(
-                        variableName: string
-                    ): vscode.MarkdownString | null {
-                        const variable = descriptions.find(
-                            (v) => v.Variable === variableName
-                        );
-                        if (!variable) {
-                            return null;
-                        }
-
-                        return new vscode.MarkdownString(
-                            `### 🏷️ Variable: **${variable.Variable}**\n\n` +
-                            `📖 **Description:** ${variable.Description}\n\n` +
-                            `📐 **Type:** \`${variable.Type}\`\n\n` +
-                            (variable.Values
-                                ? `🔢 **Allowed Values:** ${variable.Values.split(", ")
-                                    .map((val) => `\`${val}\``)
-                                    .join(", ")}\n\n`
-                                : "") +
-                            `❓ **Required:** ${variable.Mandatory === "required" ? "Yes" : "No"}`
-                        );
-                    }
-                    if (!variableInfo) {
-                        console.log("No variable info found for the detected word.");
-                        const markdown = new vscode.MarkdownString();
-                        markdown.isTrusted = true; // Enable command links
-                        markdown.appendMarkdown(`### ⚠️ Undefined Variable\n\n`);
-                        markdown.appendMarkdown(`🔍 Recommend running PestCheck to validate the file\n\n`);
-                        markdown.appendMarkdown(`[Run PestCheck](command:pestd3code.runPestCheck)`);
-                        return new vscode.Hover(markdown);
-                    }
-
-                    // console.log(Variable info: ${variableInfo.name});
-
-                    // Imprime variableInfo.name
-                    console.log(variableInfo.name);
-
-                    const hoverContent = getHoverContent(variableInfo.name);
-                    if (!hoverContent) {
-                        console.log("No hover content found for the variable.");
-                        return null;
-                    }
-                    // Mostrar hover con información
-                    return new vscode.Hover(hoverContent);
-                }
-
-                // Si el indice de la linea es distinto de 7
-                if (indexline !== 7) {
-
-                    // Iterar sobre la estructura de la línea
-                    lineStructure.forEach((variable) => {
-                        // Inicializar la variable con un valor nulo
-                        let value: string | null = null;
-
-                        console.log("Procesando variable:", variable.name);
-                        console.log("Valores disponibles en la línea:", values);
-                        console.log("Posición actual (valueIndex):", valueIndex);
-
-                        // Obtener el valor actual en la posición del índice
-                        const currentValue = values[valueIndex] || null;
-
-                        // Si tiene allowedValues, buscar en toda la línea antes de asignar un valor numérico
-                        if (
-                            "allowedValues" in variable &&
-                            Array.isArray(variable.allowedValues)
-                        ) {
-                            // Buscar un valor permitido en la línea
-                            const optionalValueIndex = values.findIndex(
-                                (v) =>
-                                    Array.isArray(variable.allowedValues) &&
-                                    variable.allowedValues.includes(v.toLowerCase())
-                            );
-                            // Solo asignar si el valor está en la lista de valores permitidos
-                            if (optionalValueIndex !== -1) {
-                                value = values[optionalValueIndex];
-                                valueIndex = optionalValueIndex + 1; // Avanzar el índice después del valor encontrado
-                                console.log(
-                                    `Asignado valor válido ${value} a ${variable.name}`
-                                );
-                            } else {
-                                value = "INVALID";
-                                console.log(
-                                    `Valor inválido para ${variable.name}. Valores permitidos: ${variable.allowedValues.join(", ")}`
-                                );
-                            }
-                        } else if (
-                            currentValue &&
-                            validateType(
-                                currentValue,
-                                variable.type as "string" | "integer" | "float"
-                            )
-                        ) {
-                            // Si no tiene allowedValues, asignar el valor actual si es válido
-                            value = currentValue;
-                            valueIndex++; // Avanzar el índice solo si se asigna un valor numérico
-                            console.log(
-                                `Asignado valor numérico ${value} a ${variable.name}`
-                            );
-                        }
-
-                        // Si no se encuentra un valor válido
-                        if (!value) {
-                            if (!value) {
-                                if (variable.required) {
-                                    value = "MISSING";
-                                    console.log(
-                                        `Variable requerida ${variable.name} está ausente.`
-                                    );
-                                    //vscode.window.showWarningMessage(`Variable "${variable.name}" está ausente o no tiene un valor asignado.`);
-                                } else {
-                                    console.log(
-                                        `Variable opcional ${variable.name} no encontrada, continuando...`
-                                    );
-                                }
-                            }
-                        }
-
-                        // Agregar a las variables mapeadas
-                        const repetitions = mappedVariables.filter(
-                            (v) => v.value === value
-                        ).length;
-                        mappedVariables.push({
-                            name: variable.name,
-                            value,
-                            valid: value !== "MISSING" && value !== null,
-                            id: repetitions + 1,
-                        });
-                    });
-
-                    // Obtener el rango de la palabra bajo el cursor
-                    const wordRange = document.getWordRangeAtPosition(position, /[^\s]+/); // Coincide con cualquier cosa que no sea espacio
-
-                    // Validar si se detectó un rango válido
-                    if (!wordRange) {
-                        console.log("No se detectó ninguna palabra bajo el cursor.");
-                        return null;
-                    }
-
-                    // Obtener la palabra desde el rango detectado
-                    const word = document.getText(wordRange);
-
-                    // Imprimir palabra detectada
-                    console.log(`Palabra detectada: "${word}"`);
-
-                    // Substring desde el inicio de la línea hasta el cursor
-                    const lineUpToCursor = document.getText(
-                        new vscode.Range(
-                            position.line,
-                            0,
-                            position.line,
-                            position.character
-                        )
-                    );
-
-                    // Eliminar espacios iniciales y dividir correctamente la línea
-                    const words = lineUpToCursor.trimStart().split(/\s+/);
-
-                    // Contar ocurrencias de la palabra detectada
-                    const wordOccurrences = words.filter((w) => w === word).length;
-
-                    // Imprimir información de depuración
-                    console.log(
-                        `La palabra "${word}" ha aparecido ${wordOccurrences} veces antes del cursor.`
-                    );
-                    console.log("Indice de la linea " + indexline);
-
-
-
-                    //TODO: Tooltip link for unassigned variables
-                    // Define variableInfo como la variable mapeada que coincide con la palabra y la ocurrencia
-
-                    const variableInfo = mappedVariables.find(
-                        (v) => v.value === word && v.id === wordOccurrences + 1
-                    );
-                    console.log("Variable info: " + variableInfo);
-                    // Si no se encuentra la variable, devolver nulo
-                    if (!variableInfo) {
-                        console.log("No variable info found for the detected word.");
-                        const markdown = new vscode.MarkdownString();
-                        markdown.isTrusted = true; // Enable command links
-                        markdown.appendMarkdown(`### ⚠️ Undefined Variable\n\n`);
-                        markdown.appendMarkdown(`🔍 Recommend running PestCheck to validate the file\n\n`);
-                        markdown.appendMarkdown(`[Run PestCheck](command:pestd3code.runPestCheck)`);
-                        return new vscode.Hover(markdown);
-                    }
-                    // Si se encuentra la variable, devolver un MarkdownString
-                    // Función para obtener el contenido del hover
-                    function getHoverContent(
-                        variableName: string
-                    ): vscode.MarkdownString | null {
-                        const variable = descriptions.find(
-                            (v) => v.Variable === variableName
-                        );
-
-                        // Si no se encuentra la variable, devolver nulo
-                        if (!variable) {
-                            return null;
-                        }
-                        // Si se encuentra la variable, devolver un MarkdownString
-                        return new vscode.MarkdownString(
-                            `### 🏷️ Variable: **${variable.Variable}**\n\n` +
-                            `📖 **Description:** *${variable.Description}*\n\n` +
-                            `📐 **Type:** \`${variable.Type}\`\n\n` +
-                            (variable.Values
-                                ? `🔢 **Allowed Values:** ${variable.Values.split(", ")
-                                    .map((val) => `\`${val}\``)
-                                    .join(", ")}\n\n`
-                                : "") +
-                            `❓ **Required:** ${variable.Mandatory === "required" ? "Yes" : "No"}`
-                        );
-                    }
-
-                    // Imprimir el nombre de la variable detectada
-                    console.log(variableInfo.name);
-
-                    // Obtener el contenido del hover
-                    const hoverContent = getHoverContent(variableInfo.name);
-                    // Si no hay contenido de hover, devolver nulo
-                    if (!hoverContent) {
-                        return null;
-                    }
-
-                    // Mostrar hover con información
-                    return new vscode.Hover(hoverContent);
-                }
-                return null;
-            },
-        }
-    );
-
-    const hoverProviderRegularization = vscode.languages.registerHoverProvider(
-        { scheme: "file" },
-        {
-            provideHover(document, position) {
-                // Obtener todas las líneas del archivo
-                const lines = document.getText().split("\n");
-
-                // Detectar las secciones que comienzan con *
-                const sections: { name: string; start: number; end: number }[] = [];
-                lines.forEach((line, index) => {
-                    const trimmedLine = line.trim();
-                    if (trimmedLine.startsWith("*")) {
-                        const nextSectionIndex = lines.findIndex(
-                            (l, i) => i > index && l.trim().startsWith("*")
-                        );
-                        sections.push({
-                            name: trimmedLine.substring(1).trim().toLowerCase(),
-                            start: index,
-                            end: nextSectionIndex !== -1 ? nextSectionIndex : lines.length, // Final hasta la siguiente sección o el final del archivo
-                        });
-                    }
-                });
-
-                console.log("Secciones detectadas:", sections); // Depuración
-
-                // Determinar la sección actual según la posición del cursor
-                const currentSection = sections.find(
-                    (section) =>
-                        position.line > section.start && position.line < section.end
-                );
-
-                if (!currentSection) {
-                    console.log("No se encontró ninguna sección para esta línea."); // Depuración
+                    console.log('No se encontró estructura para la línea');
                     return null;
                 }
 
-                console.log("Sección actual:", currentSection.name); // Depuración
+                const line = document.lineAt(position.line).text.trim();
+                const values = line.split(/\s+/);
 
-                // Verificar si la sección es * Regularization
-                if (
-                    currentSection.name !== "regularization" &&
-                    currentSection.name !== "regularisation"
-                ) {
-                    console.log("La sección actual no es Regularization."); // Depuración
+                console.log(`Línea ${indexline}: ${line}`);
+                console.log(`Valores detectados: ${values.join(", ")}`);
+
+                // Usar el nuevo parser según el tipo de línea
+                const parsedVariables = parseLineByIndex(indexline, line, values, lineStructure);
+                if (!parsedVariables) {
                     return null;
                 }
-
-                // Obtener la línea actual
-                const line = document.lineAt(position.line).text.trim();
-                const values = line.split(/\s+/); // Dividir la línea en valores
-
-                console.log("Valores detectados en la línea:", values); // Depuración
 
                 // Obtener la palabra bajo el cursor
                 const wordRange = document.getWordRangeAtPosition(position, /[^\s]+/);
                 if (!wordRange) {
-                    console.log("No hay palabra bajo el cursor."); // Depuración
                     return null;
                 }
 
-                const word = document.getText(wordRange);
-                console.log("Palabra detectada:", word); // Depuración
-
-                // Mapear las variables de la línea con los valores
-                const lineIndex = position.line - currentSection.start - 1; // Índice relativo de la línea
-                const lineStructure = regularizationDataStructure[lineIndex];
-
-                if (!lineStructure) {
-                    console.log("La línea actual no tiene una estructura definida."); // Depuración
-                    return null;
-                }
-
-                // Buscar la posición del valor bajo el cursor en la línea
-                const valueIndex = values.findIndex((v) => v === word);
-                if (valueIndex === -1) {
-                    console.log("El valor detectado no está en la línea actual."); // Depuración
-                    return null;
-                }
-
-                const variable = lineStructure[valueIndex];
-                if (!variable) {
-                    console.log("No se encontró una variable para este valor."); // Depuración
-                    return null;
-                }
-
-                // Buscar descripción en la lista de descripciones
-                const descriptionData = descriptions.find(
-                    (desc) => desc.Variable === variable.name
+                const hoveredWord = document.getText(wordRange);
+                const lineUpToCursor = document.getText(
+                    new vscode.Range(position.line, 0, position.line, position.character)
                 );
+                const wordsBeforeCursor = lineUpToCursor.trimStart().split(/\s+/);
+                const occurrence = wordsBeforeCursor.filter(w => w === hoveredWord).length;
 
-                const description = descriptionData
-                    ? descriptionData.Description
-                    : "No description available";
+                // Encontrar la variable correspondiente
+                const matchedVariable = findMatchingVariable(parsedVariables, hoveredWord, occurrence);
+                if (!matchedVariable) {
+                    return createUndefinedVariableHover();
+                }
 
-                // Construir el contenido del hover
-                const hoverContent = new vscode.MarkdownString(
-                    `### 🏷️ Variable: **${variable.name}**\n\n` +
-                    `📖 **Description:** ${description}\n\n` +
-                    `📐 **Type:** \`${variable.type}\`\n\n` +
-                    `❓ **Required:** ${variable.required ? "Yes" : "No"}`
-                );
-
-                return new vscode.Hover(hoverContent);
-            },
+                // Generar el hover para la variable
+                return createVariableHover(matchedVariable, lineStructure);
+            }
         }
     );
 
-    context.subscriptions.push(hoverProviderRegularization);
-    // Escucha cambios en el editor activo
-    vscode.window.onDidChangeActiveTextEditor((editor) => {
-        if (editor) {
-            //  applyDecorations(editor);
-        }
-    });
+    // Funciones auxiliares
+    function detectSections(lines: string[]): Section[] {
+        const sections: Section[] = [];
+        lines.forEach((line, index) => {
+            const trimmed = line.trim().toLowerCase();
+            if (trimmed.startsWith("*")) {
+                sections.push({
+                    parent: trimmed.substring(1).trim(),
+                    start: index,
+                    end: lines.findIndex((l, i) => i > index && l.trim().startsWith("*")) || lines.length
+                });
+            }
+        });
+        return sections;
+    }
 
-    //#endregion Hover provider for control data and SVD sections
+    function findCurrentSection(sections: Section[], line: number): Section | null {
+        return sections.find(section => line > section.start && line < section.end) || null;
+    }
+
+    function isRecognizedSection(section: Section | null): boolean {
+        return section?.parent === "control data" || section?.parent === "singular value decomposition";
+    }
+
+    function getStructureForSection(section: Section | null): any[] | null {
+        if (!section) {
+                        return null;
+                    }
+        return section.parent === "control data" ? controlDataStructure : svdDataStructure;
+    }
+
+    function parseLineByIndex(
+        indexline: number,
+        line: string,
+        values: string[],
+        structure: any[]
+    ): ParsedVariable[] | null {
+        console.log('\n=== Control Data Line Parsing ===');
+        console.log(`Line Index: ${indexline}`);
+        console.log(`Raw Line: "${line}"`);
+        console.log(`Tokens: [${values.join(', ')}]`);
+
+        const mapped: ParsedVariable[] = [];
+        
+        // Line 2: RSTFLE PESTMODE
+        if (indexline === 0) {
+            if (values.length >= 2) {
+                // RSTFLE
+                const rstfle = values[0];
+                const validRstfle = validateType(rstfle, "string", ["restart", "norestart"]);
+                mapped.push({
+                    name: "RSTFLE",
+                    value: rstfle,
+                    valid: validRstfle,
+                    id: 1
+                });
+
+                // PESTMODE
+                const pestmode = values[1];
+                const validPestmode = validateType(pestmode, "string", ["estimation", "prediction", "regularization", "regularisation", "pareto"]);
+                mapped.push({
+                    name: "PESTMODE",
+                    value: pestmode,
+                    valid: validPestmode,
+                    id: 1
+                });
+            }
+        }
+        // Line 3: NPAR NOBS NPARGP NPRIOR NOBSGP [MAXCOMPDIM] [DERZEROLIM]
+        else if (indexline === 1) {
+            // Required variables (all integers)
+            const requiredNames = ["NPAR", "NOBS", "NPARGP", "NPRIOR", "NOBSGP"];
+            for (let i = 0; i < requiredNames.length && i < values.length; i++) {
+                const valid = validateType(values[i], "integer");
+                mapped.push({
+                    name: requiredNames[i],
+                    value: values[i],
+                    valid: valid,
+                    id: 1
+                });
+            }
+
+            // Optional variables
+            if (values.length > 5) {
+                // MAXCOMPDIM (integer)
+                if (validateType(values[5], "integer")) {
+                    mapped.push({
+                        name: "MAXCOMPDIM",
+                        value: values[5],
+                                valid: true,
+                        id: 1
+                    });
+                }
+                
+                // DERZEROLIM (float)
+                if (values.length > 6 && validateType(values[6], "float")) {
+                    mapped.push({
+                        name: "DERZEROLIM",
+                        value: values[6],
+                        valid: true,
+                        id: 1
+                    });
+                }
+            }
+
+            // Mark missing optional variables
+            if (!mapped.some(v => v.name === "MAXCOMPDIM")) {
+                mapped.push({
+                    name: "MAXCOMPDIM",
+                    value: "MISSING",
+                    valid: true,
+                    id: 1
+                });
+            }
+            if (!mapped.some(v => v.name === "DERZEROLIM")) {
+                mapped.push({
+                    name: "DERZEROLIM",
+                    value: "MISSING",
+                    valid: true,
+                    id: 1
+                });
+            }
+        }
+        // Line 4: NTPLFLE NINSFLE PRECIS DPOINT [NUMCOM JACFILE MESSFILE] [OBSREREF]
+        else if (indexline === 2) {
+            console.log("Processing line 4 (NTPLFLE NINSFLE PRECIS DPOINT)");
+            
+            // Required variables first
+            if (values.length >= 4) {
+                // NTPLFLE (integer)
+                mapped.push({
+                    name: "NTPLFLE",
+                    value: values[0],
+                    valid: validateType(values[0], "integer"),
+                    id: 1
+                });
+
+                // NINSFLE (integer)
+                mapped.push({
+                    name: "NINSFLE",
+                    value: values[1],
+                    valid: validateType(values[1], "integer"),
+                    id: 1
+                });
+
+                // PRECIS (string)
+                mapped.push({
+                    name: "PRECIS",
+                    value: values[2],
+                    valid: validateType(values[2], "string", ["single", "double"]),
+                    id: 1
+                });
+
+                // DPOINT (string)
+                mapped.push({
+                    name: "DPOINT",
+                    value: values[3],
+                    valid: validateType(values[3], "string", ["point", "nopoint"]),
+                    id: 1
+                });
+
+                // Process optional variables
+                let remainingValues = values.slice(4);
+                let numericOptionalsAssigned = 0;
+                
+                remainingValues.forEach(value => {
+                    if (validateType(value, "integer")) {
+                        // Assign to numeric optionals in order: NUMCOM, JACFILE, MESSFILE
+                        if (numericOptionalsAssigned === 0) {
+                            mapped.push({
+                                name: "NUMCOM",
+                                value: value,
+                                valid: true,
+                                id: 1
+                            });
+                            numericOptionalsAssigned++;
+                        } else if (numericOptionalsAssigned === 1 && validateType(value, "integer", ["0", "1", "-1"])) {
+                            mapped.push({
+                                name: "JACFILE",
+                                value: value,
+                                valid: true,
+                                id: 1
+                            });
+                            numericOptionalsAssigned++;
+                        } else if (numericOptionalsAssigned === 2 && validateType(value, "integer", ["0", "1"])) {
+                            mapped.push({
+                                name: "MESSFILE",
+                                value: value,
+                                valid: true,
+                                id: 1
+                            });
+                            numericOptionalsAssigned++;
+                        }
+                    } else if (validateType(value, "string", ["obsreref", "obsreref_N", "noobsreref"]) && 
+                             !mapped.some(v => v.name === "OBSREREF")) {
+                        mapped.push({
+                            name: "OBSREREF",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                });
+            }
+
+            // Mark missing optional variables
+            const optionalVars = ["NUMCOM", "JACFILE", "MESSFILE", "OBSREREF"];
+            optionalVars.forEach(name => {
+                if (!mapped.some(v => v.name === name)) {
+                    mapped.push({
+                        name: name,
+                        value: "MISSING",
+                        valid: true,
+                        id: 1
+                    });
+                }
+            });
+        }
+        // Line 5: RLAMBDA1 RLAMFAC PHIRATSUF PHIREDLAM NUMLAM [JACUPDATE] [LAMFORGIVE] [DERFORGIVE]
+        else if (indexline === 3) {
+            console.log("Processing line 5 (indexline 3)");
+            
+            // Required variables first
+            if (values.length >= 5) {
+                // RLAMBDA1 (float)
+                mapped.push({
+                    name: "RLAMBDA1",
+                    value: values[0],
+                    valid: validateType(values[0], "float"),
+                    id: 1
+                });
+
+                // RLAMFAC (float)
+                mapped.push({
+                    name: "RLAMFAC",
+                    value: values[1],
+                    valid: validateType(values[1], "float"),
+                    id: 1
+                });
+
+                // PHIRATSUF (float)
+                mapped.push({
+                    name: "PHIRATSUF",
+                    value: values[2],
+                    valid: validateType(values[2], "float"),
+                    id: 1
+                });
+
+                // PHIREDLAM (float)
+                mapped.push({
+                    name: "PHIREDLAM",
+                    value: values[3],
+                    valid: validateType(values[3], "float"),
+                    id: 1
+                });
+
+                // NUMLAM (integer)
+                mapped.push({
+                    name: "NUMLAM",
+                    value: values[4],
+                    valid: validateType(values[4], "integer"),
+                    id: 1
+                });
+
+                // Optional variables
+                let remainingValues = values.slice(5);
+                remainingValues.forEach(value => {
+                    // JACUPDATE (integer)
+                    if (validateType(value, "integer") && !mapped.some(v => v.name === "JACUPDATE")) {
+                        mapped.push({
+                            name: "JACUPDATE",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                    // LAMFORGIVE (string)
+                    else if (value.toLowerCase() === "lamforgive" && !mapped.some(v => v.name === "LAMFORGIVE")) {
+                        mapped.push({
+                            name: "LAMFORGIVE",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                    // DERFORGIVE (string)
+                    else if (value.toLowerCase() === "derforgive" && !mapped.some(v => v.name === "DERFORGIVE")) {
+                        mapped.push({
+                            name: "DERFORGIVE",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                });
+            }
+
+            // Mark missing optional variables
+            ["JACUPDATE", "LAMFORGIVE", "DERFORGIVE"].forEach(name => {
+                if (!mapped.some(v => v.name === name)) {
+                    mapped.push({
+                        name: name,
+                        value: "MISSING",
+                        valid: true,
+                        id: 1
+                    });
+                }
+            });
+        }
+        // Line 6: RELPARMAX FACPARMAX FACORIG [IBOUNDSTICK UPVECBEND] [ABSPARMAX]
+        else if (indexline === 4) {
+            console.log("Processing line 6 (indexline 4)");
+            
+            // Required variables first
+            if (values.length >= 3) {
+                // RELPARMAX (float)
+                mapped.push({
+                    name: "RELPARMAX",
+                    value: values[0],
+                    valid: validateType(values[0], "float"),
+                    id: 1
+                });
+
+                // FACPARMAX (float)
+                mapped.push({
+                    name: "FACPARMAX",
+                    value: values[1],
+                    valid: validateType(values[1], "float"),
+                    id: 1
+                });
+
+                // FACORIG (float)
+                mapped.push({
+                    name: "FACORIG",
+                    value: values[2],
+                    valid: validateType(values[2], "float"),
+                    id: 1
+                });
+
+                // Optional variables
+                let remainingValues = values.slice(3);
+                remainingValues.forEach(value => {
+                    // IBOUNDSTICK (integer)
+                    if (validateType(value, "integer") && !mapped.some(v => v.name === "IBOUNDSTICK")) {
+                        mapped.push({
+                            name: "IBOUNDSTICK",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                    // UPVECBEND (integer, 0 or 1)
+                    else if (validateType(value, "integer", ["0", "1"]) && !mapped.some(v => v.name === "UPVECBEND")) {
+                        mapped.push({
+                            name: "UPVECBEND",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                    // ABSPARMAX (float)
+                    else if (validateType(value, "float") && !mapped.some(v => v.name === "ABSPARMAX")) {
+                        mapped.push({
+                            name: "ABSPARMAX",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                });
+            }
+
+            // Mark missing optional variables
+            ["IBOUNDSTICK", "UPVECBEND", "ABSPARMAX"].forEach(name => {
+                if (!mapped.some(v => v.name === name)) {
+                    mapped.push({
+                        name: name,
+                        value: "MISSING",
+                        valid: true,
+                        id: 1
+                    });
+                }
+            });
+        }
+        // Line 7: PHIREDSWH [NOPTSWITCH] [SPLITSWH] [DOAUI] [DOSENREUSE] [BOUNDSCALE]
+        else if (indexline === 5) {
+            console.log("Processing line 7 (PHIREDSWH and optional variables)");
+            
+            // Required variable first - PHIREDSWH (float)
+            if (values.length >= 1) {
+                mapped.push({
+                    name: "PHIREDSWH",
+                    value: values[0],
+                    valid: validateType(values[0], "float"),
+                    id: 1
+                });
+
+                // Process optional variables
+                let remainingValues = values.slice(1);
+                remainingValues.forEach(value => {
+                    // NOPTSWITCH (integer)
+                    if (validateType(value, "integer") && !mapped.some(v => v.name === "NOPTSWITCH")) {
+                        mapped.push({
+                            name: "NOPTSWITCH",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                    // SPLITSWH (float)
+                    else if (validateType(value, "float") && !mapped.some(v => v.name === "SPLITSWH")) {
+                        mapped.push({
+                            name: "SPLITSWH",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                    // DOAUI (string)
+                    else if (validateType(value, "string", ["aui", "auid", "noaui"]) && !mapped.some(v => v.name === "DOAUI")) {
+                        mapped.push({
+                            name: "DOAUI",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                    // DOSENREUSE (string)
+                    else if (validateType(value, "string", ["senreuse", "nosenreuse"]) && !mapped.some(v => v.name === "DOSENREUSE")) {
+                        mapped.push({
+                            name: "DOSENREUSE",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                    // BOUNDSCALE (string)
+                    else if (validateType(value, "string", ["boundscale", "noboundscale"]) && !mapped.some(v => v.name === "BOUNDSCALE")) {
+                        mapped.push({
+                            name: "BOUNDSCALE",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                });
+            }
+
+            // Mark missing optional variables
+            const optionalVars = ["NOPTSWITCH", "SPLITSWH", "DOAUI", "DOSENREUSE", "BOUNDSCALE"];
+            optionalVars.forEach(name => {
+                if (!mapped.some(v => v.name === name)) {
+                    mapped.push({
+                        name: name,
+                        value: "MISSING",
+                        valid: true,
+                        id: 1
+                    });
+                }
+            });
+        }
+        // Line 8: NOPTMAX PHIREDSTP NPHISTP NPHINORED RELPARSTP NRELPAR [PHISTOPTHRESH] [LASTRUN] [PHIABANDON]
+        else if (indexline === 6) {
+            console.log("Processing line 8 (NOPTMAX and optimization parameters)");
+            
+            // Required variables first
+            if (values.length >= 6) {
+                // NOPTMAX (integer)
+                mapped.push({
+                    name: "NOPTMAX",
+                    value: values[0],
+                    valid: validateType(values[0], "integer"),
+                    id: 1
+                });
+
+                // PHIREDSTP (float)
+                mapped.push({
+                    name: "PHIREDSTP",
+                    value: values[1],
+                    valid: validateType(values[1], "float"),
+                    id: 1
+                });
+
+                // NPHISTP (integer)
+                mapped.push({
+                    name: "NPHISTP",
+                    value: values[2],
+                    valid: validateType(values[2], "integer"),
+                    id: 1
+                });
+
+                // NPHINORED (integer)
+                mapped.push({
+                    name: "NPHINORED",
+                    value: values[3],
+                    valid: validateType(values[3], "integer"),
+                    id: 1
+                });
+
+                // RELPARSTP (float)
+                mapped.push({
+                    name: "RELPARSTP",
+                    value: values[4],
+                    valid: validateType(values[4], "float"),
+                    id: 1
+                });
+
+                // NRELPAR (integer)
+                mapped.push({
+                    name: "NRELPAR",
+                    value: values[5],
+                    valid: validateType(values[5], "integer"),
+                    id: 1
+                });
+
+                // Process optional variables
+                let remainingValues = values.slice(6);
+                remainingValues.forEach(value => {
+                    // PHISTOPTHRESH (float)
+                    if (validateType(value, "float") && !mapped.some(v => v.name === "PHISTOPTHRESH")) {
+                        mapped.push({
+                            name: "PHISTOPTHRESH",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                    // LASTRUN (integer, 0 or 1)
+                    else if (validateType(value, "integer", ["0", "1"]) && !mapped.some(v => v.name === "LASTRUN")) {
+                        mapped.push({
+                            name: "LASTRUN",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                    // PHIABANDON (float or filename)
+                    else if (!mapped.some(v => v.name === "PHIABANDON")) {
+                        mapped.push({
+                            name: "PHIABANDON",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                });
+            }
+
+            // Mark missing optional variables
+            const optionalVars = ["PHISTOPTHRESH", "LASTRUN", "PHIABANDON"];
+            optionalVars.forEach(name => {
+                if (!mapped.some(v => v.name === name)) {
+                    mapped.push({
+                        name: name,
+                        value: "MISSING",
+                        valid: true,
+                        id: 1
+                    });
+                }
+            });
+        }
+        // Line 9: ICOV ICOR IEIG [IRES] [JCOSAVE] [VERBOSEREC] [JCOSAVEITN] [REISAVEITN] [PARSAVEITN] [PARSAVERUN]
+        else if (indexline === 7) {
+            console.log("Processing line 9 (ICOV and matrix file options)");
+            
+            // Required variables first
+            if (values.length >= 3) {
+                // ICOV (integer)
+                mapped.push({
+                    name: "ICOV",
+                    value: values[0],
+                    valid: validateType(values[0], "integer", ["0", "1"]),
+                    id: 1
+                });
+
+                // ICOR (integer)
+                mapped.push({
+                    name: "ICOR",
+                    value: values[1],
+                    valid: validateType(values[1], "integer", ["0", "1"]),
+                    id: 1
+                });
+
+                // IEIG (integer)
+                mapped.push({
+                    name: "IEIG",
+                    value: values[2],
+                    valid: validateType(values[2], "integer", ["0", "1"]),
+                    id: 1
+                });
+
+                // Process optional variables
+                let remainingValues = values.slice(3);
+                remainingValues.forEach(value => {
+                    // IRES (integer)
+                    if (validateType(value, "integer", ["0", "1"]) && !mapped.some(v => v.name === "IRES")) {
+                        mapped.push({
+                            name: "IRES",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                    // JCOSAVE (string)
+                    else if (validateType(value, "string", ["jcosave", "nojcosave"]) && !mapped.some(v => v.name === "JCOSAVE")) {
+                        mapped.push({
+                            name: "JCOSAVE",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                    // VERBOSEREC (string)
+                    else if (validateType(value, "string", ["verboserec", "noverboserec"]) && !mapped.some(v => v.name === "VERBOSEREC")) {
+                        mapped.push({
+                            name: "VERBOSEREC",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                    // JCOSAVEITN (string)
+                    else if (validateType(value, "string", ["jcosaveitn", "nojcosaveitn"]) && !mapped.some(v => v.name === "JCOSAVEITN")) {
+                        mapped.push({
+                            name: "JCOSAVEITN",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                    // REISAVEITN (string)
+                    else if (validateType(value, "string", ["reisaveitn", "noreisaveitn"]) && !mapped.some(v => v.name === "REISAVEITN")) {
+                        mapped.push({
+                            name: "REISAVEITN",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                    // PARSAVEITN (string)
+                    else if (validateType(value, "string", ["parsaveitn", "noparsaveitn"]) && !mapped.some(v => v.name === "PARSAVEITN")) {
+                        mapped.push({
+                            name: "PARSAVEITN",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                    // PARSAVERUN (string)
+                    else if (validateType(value, "string", ["parsaverun", "noparsaverun"]) && !mapped.some(v => v.name === "PARSAVERUN")) {
+                        mapped.push({
+                            name: "PARSAVERUN",
+                            value: value,
+                            valid: true,
+                            id: 1
+                        });
+                    }
+                });
+            }
+
+            // Mark missing optional variables
+            const optionalVars = ["IRES", "JCOSAVE", "VERBOSEREC", "JCOSAVEITN", "REISAVEITN", "PARSAVEITN", "PARSAVERUN"];
+            optionalVars.forEach(name => {
+                if (!mapped.some(v => v.name === name)) {
+                    mapped.push({
+                        name: name,
+                        value: "MISSING",
+                        valid: true,
+                        id: 1
+                        });
+                    }
+                });
+        }
+        // Add more specific line handlers here...
+
+        console.log('\nFinal Parsed Variables:');
+        mapped.forEach(v => {
+            console.log(`  ${v.name}: Value="${v.value}", Valid=${v.valid}, ID=${v.id}`);
+        });
+
+        return mapped;
+    }
+
+    function findMatchingVariable(
+        variables: ParsedVariable[],
+        word: string,
+        occurrence: number
+    ): ParsedVariable | null {
+        console.log('\n=== Finding Matching Variable ===');
+        console.log(`Looking for: Word="${word}", Occurrence=${occurrence}`);
+        
+        let count = 0;
+        const found = variables.find(v => {
+            console.log(`  Checking ${v.name}: Value="${v.value}", Current count=${count}`);
+            if (v.value === word) {
+                console.log(`    Match found! Is it the right occurrence? ${count === occurrence}`);
+                const isMatch = count === occurrence;
+                if (!isMatch) count++;
+                return isMatch;
+            }
+            return false;
+        });
+
+        console.log(`Result: ${found ? `Found ${found.name} at occurrence ${occurrence}` : 'No match found'}`);
+        return found || null;
+    }
+
+    function createUndefinedVariableHover(): vscode.Hover {
+                        const markdown = new vscode.MarkdownString();
+        markdown.isTrusted = true;
+                        markdown.appendMarkdown(`### ⚠️ Undefined Variable\n\n`);
+                        markdown.appendMarkdown(`🔍 Recommend running PestCheck to validate the file\n\n`);
+                        markdown.appendMarkdown(`[Run PestCheck](command:pestd3code.runPestCheck)`);
+                        return new vscode.Hover(markdown);
+                    }
+
+    function createVariableHover(variable: ParsedVariable, structure: any[]): vscode.Hover | null {
+        console.log('\n=== Creating Hover Content ===');
+        console.log(`Variable: ${variable.name}, Value="${variable.value}", Valid=${variable.valid}`);
+
+        const varStructure = structure.find((v: { name: string; type: string; description?: string; required: boolean; allowedValues?: string[] }) => v.name === variable.name);
+        if (!varStructure) {
+            console.log('No structure found for variable');
+            return null;
+        }
+
+        console.log('Structure found:');
+        console.log(`  Type: ${varStructure.type}`);
+        console.log(`  Required: ${varStructure.required}`);
+        console.log(`  Has Description: ${!!varStructure.description}`);
+        console.log(`  Has Allowed Values: ${!!varStructure.allowedValues}`);
+
+        // Verificar si el valor es válido para variables opcionales con allowedValues
+        let isValidValue = true;
+        if (variable.value !== "MISSING" && varStructure.allowedValues) {
+            isValidValue = varStructure.allowedValues.includes(variable.value);
+            console.log(`Checking optional value validity: ${isValidValue}`);
+        }
+
+        const markdown = new vscode.MarkdownString();
+        markdown.appendMarkdown(
+            `### 🏷️ Variable: **${varStructure.name}**\n\n` +
+            `📖 **Description:** ${varStructure.description || "No description available"}\n\n` +
+            `📐 **Type:** \`${varStructure.type}\`\n\n` +
+            (varStructure.allowedValues
+                ? `🔢 **Allowed Values:** ${varStructure.allowedValues.map((v: any) => `\`${v}\``).join(", ")}\n\n`
+                : "") +
+            `❓ **Required:** ${varStructure.required ? "Yes" : "No"}`
+        );
+
+        // Mostrar warning para variables inválidas (requeridas u opcionales)
+        if (!variable.valid || !isValidValue) {
+            console.log('Adding invalid value warning');
+            markdown.appendMarkdown(
+                `\n\n⚠️ **Invalid Value:** \`${variable.value}\` does not satisfy the requirements.`
+            );
+        }
+
+        return new vscode.Hover(markdown);
+    }
+
+    function validateType(value: string, type: string, allowedValues?: string[]): boolean {
+        console.log(`Validating Type: Value="${value}", Type=${type}`);
+        if (allowedValues) {
+            console.log(`  Allowed Values: [${allowedValues.join(", ")}]`);
+        }
+        
+        if (type === "integer") {
+            const isInteger = /^-?\d+$/.test(value);
+            console.log(`  Integer validation result: ${isInteger}`);
+            return isInteger;
+        } else if (type === "float") {
+            const isFloat = /^-?\d*\.?\d+$/.test(value);
+            console.log(`  Float validation result: ${isFloat}`);
+            return isFloat;
+        } else if (type === "string") {
+            if (allowedValues && allowedValues.length > 0) {
+                const isValid = allowedValues.includes(value.toLowerCase());
+                console.log(`  String validation against allowed values: ${isValid}`);
+                return isValid;
+            }
+            console.log(`  String validation: true (no allowed values specified)`);
+            return true;
+        }
+        
+        console.log(`  Validation result: false (unknown type)`);
+        return false;
+    }
+
+    interface Section {
+        parent: string;
+        start: number;
+        end: number;
+    }
+
+    interface ParsedVariable {
+        name: string;
+        value: string;
+        valid: boolean;
+        id: number;
+    }
+
+    function isNumeric(value: string): boolean {
+        return !isNaN(Number(value));
+    }
+
+    // #endregion Hover provider for control data and SVD sections
 
     /*========================================================
     CodeLens and Hover for Parameter Groups, Parameter Data, Observation Groups, Observation Data and Prior Information
