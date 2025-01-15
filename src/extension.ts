@@ -363,6 +363,18 @@ class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 //#endregion Document Symbol Provider
 
 // #region Validate type of the variable
+function isValidFloat(value: string): boolean {
+    // Regex para validar números flotantes y notación científica
+    const floatRegex = /^[+-]?\d*\.?\d+(?:[eE][+-]?\d+)?$/;
+    return floatRegex.test(value);
+}
+
+function isValidFilename(value: string): boolean {
+    // Más estricto que solo una letra
+    // Debe tener al menos un carácter y una extensión
+    return /^[\w][\w\s.-]*\.\w+$/.test(value);
+}
+
 function validateType(value: string, type: string, allowedValues?: string[], minValue?: number, maxValue?: number): boolean {
     console.log(`Validating Type: Value="${value}", Type=${type}`);
     
@@ -375,26 +387,35 @@ function validateType(value: string, type: string, allowedValues?: string[], min
             const intValue = parseInt(value);
             const isInt = !isNaN(intValue) && Number.isInteger(Number(value));
             console.log(`  Integer validation result: ${isInt}`);
-            if (minValue !== undefined && maxValue !== undefined) {
-                return isInt && intValue >= minValue && intValue <= maxValue;
-            }
-            return isInt;
+            if (!isInt) return false;
+            if (minValue !== undefined && intValue < minValue) return false;
+            if (maxValue !== undefined && intValue > maxValue) return false;
+            return true;
         
         case 'float':
             const floatValue = parseFloat(value);
             const isFloat = !isNaN(floatValue) && Number.isFinite(Number(value));
             console.log(`  Float validation result: ${isFloat}`);
-            if (minValue !== undefined && maxValue !== undefined) {
-                return isFloat && floatValue >= minValue && floatValue <= maxValue;
-            }
-            return isFloat;
-            
+            if (!isFloat) return false;
+            if (minValue !== undefined && floatValue < minValue) return false;
+            if (maxValue !== undefined && floatValue > maxValue) return false;
+            return true;
+        
         case 'string':
-            return typeof value === 'string';
+            // For strings, we mainly care about allowedValues
+            break;
             
         default:
+            console.log(`Unknown type: ${type}`);
             return false;
     }
+    
+    // Finally check allowedValues if they exist
+    if (allowedValues && allowedValues.length > 0) {
+        return allowedValues.includes(value);
+    }
+    
+    return true;
 }
 // #endregion Validate type of the variable
 
@@ -1522,161 +1543,476 @@ export async function activate(
                 let lineStructure;
                 if (relativeLine === 0) {
                     lineStructure = [
-                        { name: "RSTFLE", required: true, type: "string", order: 1, allowedValues: ["restart", "norestart"] },
-                        { name: "PESTMODE", required: true, type: "string", order: 2, allowedValues: ["estimation", "prediction", "regularization", "regularisation", "pareto"] }
+                        { 
+                            name: "RSTFLE", 
+                            required: true, 
+                            type: "string", 
+                            order: 1, 
+                            allowedValues: ["restart", "norestart"],
+                            description: descriptions.find(desc => desc.Variable === "RSTFLE")?.Description || "No description available"
+                        },
+                        { 
+                            name: "PESTMODE", 
+                            required: true, 
+                            type: "string", 
+                            order: 2, 
+                            allowedValues: ["estimation", "prediction", "regularization", "regularisation", "pareto"],
+                            description: descriptions.find(desc => desc.Variable === "PESTMODE")?.Description || "No description available"
+                        }
                     ];
                 } else if (relativeLine === 1) {
                     lineStructure = [
-                        { name: "NPAR", required: true, type: "integer", order: 1 },
-                        { name: "NOBS", required: true, type: "integer", order: 2 },
-                        { name: "NPARGP", required: true, type: "integer", order: 3 },
-                        { name: "NPRIOR", required: true, type: "integer", order: 4 },
-                        { name: "NOBSGP", required: true, type: "integer", order: 5 },
-                        { name: "MAXCOMPDIM", required: false, type: "integer" },
-                        { name: "DERZEROLIM", required: false, type: "float" }
+                        { 
+                            name: "NPAR", 
+                            required: true, 
+                            type: "integer", 
+                            order: 1,
+                            min: 1, // greater than zero
+                            description: descriptions.find(desc => desc.Variable === "NPAR")?.Description || "No description available"
+                        },
+                        { 
+                            name: "NOBS", 
+                            required: true, 
+                            type: "integer", 
+                            order: 2,
+                            min: 1, // greater than zero
+                            description: descriptions.find(desc => desc.Variable === "NOBS")?.Description || "No description available"
+                        },
+                        { 
+                            name: "NPARGP", 
+                            required: true, 
+                            type: "integer", 
+                            order: 3,
+                            min: 1, // greater than zero
+                            description: descriptions.find(desc => desc.Variable === "NPARGP")?.Description || "No description available"
+                        },
+                        { 
+                            name: "NPRIOR", 
+                            required: true, 
+                            type: "integer", 
+                            order: 4,
+                            description: descriptions.find(desc => desc.Variable === "NPRIOR")?.Description || "No description available"
+                        },
+                        { 
+                            name: "NOBSGP", 
+                            required: true, 
+                            type: "integer", 
+                            order: 5,
+                            min: 1, // greater than zero
+                            description: descriptions.find(desc => desc.Variable === "NOBSGP")?.Description || "No description available"
+                        },
+                        { 
+                            name: "MAXCOMPDIM", 
+                            required: false, 
+                            type: "integer",
+                            min: 0, // zero or greater
+                            description: descriptions.find(desc => desc.Variable === "MAXCOMPDIM")?.Description || "No description available"
+                        },
+                        { 
+                            name: "DERZEROLIM", 
+                            required: false, 
+                            type: "float",
+                            description: descriptions.find(desc => desc.Variable === "DERZEROLIM")?.Description || "No description available"
+                        }
                     ];
                 } else if (relativeLine === 2) {
                     // Line 4: NTPLFLE  NINSFLE  PRECIS  DPOINT [NUMCOM JACFILE MESSFILE] [OBSREREF]
                     lineStructure = [
                         // Required variables
-                        { name: "NTPLFLE", required: true, type: "integer", order: 1 },
-                        { name: "NINSFLE", required: true, type: "integer", order: 2 },
-                        { name: "PRECIS", required: true, type: "string", order: 3, allowedValues: ["single", "double"] },
-                        { name: "DPOINT", required: true, type: "string", order: 4, allowedValues: ["point", "nopoint"] },
-                        // Optional variables - numeric
-                        { name: "NUMCOM", required: false, type: "integer" },
-                        { name: "JACFILE", required: false, type: "integer", allowedValues: ["0", "1", "-1"] },
-                        { name: "MESSFILE", required: false, type: "integer", allowedValues: ["0", "1"] },
+                        { 
+                            name: "NTPLFLE", 
+                            required: true, 
+                            type: "integer", 
+                            order: 1,
+                            min: 1, // greater than zero
+                            description: descriptions.find(desc => desc.Variable === "NTPLFLE")?.Description || "No description available"
+                        },
+                        { 
+                            name: "NINSFLE", 
+                            required: true, 
+                            type: "integer", 
+                            order: 2,
+                            min: 1, // greater than zero
+                            description: descriptions.find(desc => desc.Variable === "NINSFLE")?.Description || "No description available"
+                        },
+                        { 
+                            name: "PRECIS", 
+                            required: true, 
+                            type: "string", 
+                            order: 3,
+                            allowedValues: ["single", "double"],
+                            description: descriptions.find(desc => desc.Variable === "PRECIS")?.Description || "No description available"
+                        },
+                        { 
+                            name: "DPOINT", 
+                            required: true, 
+                            type: "string", 
+                            order: 4,
+                            allowedValues: ["point", "nopoint"],
+                            description: descriptions.find(desc => desc.Variable === "DPOINT")?.Description || "No description available"
+                        },
+                        { 
+                            name: "NUMCOM", 
+                            required: false, 
+                            type: "integer",
+                            min: 1, // greater than zero
+                            description: descriptions.find(desc => desc.Variable === "NUMCOM")?.Description || "No description available"
+                        },
+                        { 
+                            name: "JACFILE", 
+                            required: false, 
+                            type: "integer",
+                            min: -1,
+                            max: 1,
+                            allowedValues: ["-1", "0", "1"], // 0, 1 or -1
+                            description: descriptions.find(desc => desc.Variable === "JACFILE")?.Description || "No description available"
+                        },
+                        { 
+                            name: "MESSFILE", 
+                            required: false, 
+                            type: "integer",
+                            min: 0,
+                            max: 1,
+                            allowedValues: ["0", "1"], // zero or one
+                            description: descriptions.find(desc => desc.Variable === "MESSFILE")?.Description || "No description available"
+                        },
                         // Optional variables - string
-                        { name: "OBSREREF", required: false, type: "string", allowedValues: ["obsreref", "obsreref_N", "noobsreref"] }
+                        { 
+                            name: "OBSREREF", 
+                            required: false, 
+                            type: "string", 
+                            allowedValues: ["obsreref", "obsreref_N", "noobsreref"],
+                            description: descriptions.find(desc => desc.Variable === "OBSREREF")?.Description || "No description available"
+                        }
                     ];
                 } else if (relativeLine === 3) {
                     // Line 5: RLAMBDA1  RLAMFAC  PHIRATSUF  PHIREDLAM  NUMLAM [JACUPDATE] [LAMFORGIVE] [DERFORGIVE]
                     lineStructure = [
                         // Required variables
-                        { name: "RLAMBDA1", required: true, type: "float", order: 1 },
-                        { name: "RLAMFAC", required: true, type: "float", order: 2 },
-                        { name: "PHIRATSUF", required: true, type: "float", order: 3 },
-                        { name: "PHIREDLAM", required: true, type: "float", order: 4 },
-                        { name: "NUMLAM", required: true, type: "integer", order: 5 },
-                        // Optional variables - numeric
-                        { name: "JACUPDATE", required: false, type: "integer" },
-                        // Optional variables - string
-                        { name: "LAMFORGIVE", required: false, type: "string", allowedValues: ["lamforgive", "nolamforgive"] },
-                        { name: "DERFORGIVE", required: false, type: "string", allowedValues: ["derforgive", "noderforgive"] }
+                        { 
+                            name: "RLAMBDA1", 
+                            required: true, 
+                            type: "float", 
+                            order: 1,
+                            min: 0, // zero or greater
+                            description: descriptions.find(desc => desc.Variable === "RLAMBDA1")?.Description || "No description available"
+                        },
+                        { 
+                            name: "RLAMFAC", 
+                            required: true, 
+                            type: "float", 
+                            order: 2,
+                            description: descriptions.find(desc => desc.Variable === "RLAMFAC")?.Description || "No description available"
+                        },
+                        { 
+                            name: "PHIRATSUF", 
+                            required: true, 
+                            type: "float", 
+                            order: 3,
+                            min: 0,
+                            max: 1, // between zero and one
+                            description: descriptions.find(desc => desc.Variable === "PHIRATSUF")?.Description || "No description available"
+                        },
+                        { 
+                            name: "PHIREDLAM", 
+                            required: true, 
+                            type: "float", 
+                            order: 4,
+                            min: 0,
+                            max: 1, // between zero and one
+                            description: descriptions.find(desc => desc.Variable === "PHIREDLAM")?.Description || "No description available"
+                        },
+                        { 
+                            name: "NUMLAM", 
+                            required: true, 
+                            type: "integer", 
+                            order: 5,
+                            min: 1, // one or greater
+                            description: descriptions.find(desc => desc.Variable === "NUMLAM")?.Description || "No description available"
+                        },
+                        { 
+                            name: "JACUPDATE", 
+                            required: false, 
+                            type: "integer",
+                            min: 0, // zero or greater
+                            description: descriptions.find(desc => desc.Variable === "JACUPDATE")?.Description || "No description available"
+                        },
+                        { 
+                            name: "LAMFORGIVE", 
+                            required: false, 
+                            type: "string",
+                            allowedValues: ["lamforgive", "nolamforgive"],
+                            description: descriptions.find(desc => desc.Variable === "LAMFORGIVE")?.Description || "No description available"
+                        },
+                        { 
+                            name: "DERFORGIVE", 
+                            required: false, 
+                            type: "string",
+                            allowedValues: ["derforgive", "noderforgive"],
+                            description: descriptions.find(desc => desc.Variable === "DERFORGIVE")?.Description || "No description available"
+                        }
                     ];
                 } else if (relativeLine === 4) {
                     // Line 6: RELPARMAX  FACPARMAX  FACORIG [IBOUNDSTICK UPVECBEND] [ABSPARMAX]
                     lineStructure = [
                         // Required variables
-                        { name: "RELPARMAX", required: true, type: "float", order: 1 },
-                        { name: "FACPARMAX", required: true, type: "float", order: 2 },
-                        { name: "FACORIG", required: true, type: "float", order: 3 },
-                        // Optional variables - all numeric
-                        { name: "IBOUNDSTICK", required: false, type: "integer" },
-                        { name: "UPVECBEND", required: false, type: "integer", allowedValues: ["0", "1"] },
-                        { name: "ABSPARMAX", required: false, type: "float" }
+                        { 
+                            name: "RELPARMAX", 
+                            required: true, 
+                            type: "float", 
+                            order: 1,
+                            min: 0, // greater than zero
+                            description: descriptions.find(desc => desc.Variable === "RELPARMAX")?.Description || "No description available"
+                        },
+                        { 
+                            name: "FACPARMAX", 
+                            required: true, 
+                            type: "float", 
+                            order: 2,
+                            min: 1, // greater than one
+                            description: descriptions.find(desc => desc.Variable === "FACPARMAX")?.Description || "No description available"
+                        },
+                        { 
+                            name: "FACORIG", 
+                            required: true, 
+                            type: "float", 
+                            order: 3,
+                            min: 0,
+                            max: 1, // between zero and one
+                            description: descriptions.find(desc => desc.Variable === "FACORIG")?.Description || "No description available"
+                        },
+                        { 
+                            name: "IBOUNDSTICK", 
+                            required: false, 
+                            type: "integer",
+                            min: 0, // zero or greater
+                            description: descriptions.find(desc => desc.Variable === "IBOUNDSTICK")?.Description || "No description available"
+                        },
+                        { 
+                            name: "UPVECBEND", 
+                            required: false, 
+                            type: "integer",
+                            min: 0,
+                            max: 1, // zero or one
+                            allowedValues: ["0", "1"],
+                            description: descriptions.find(desc => desc.Variable === "UPVECBEND")?.Description || "No description available"
+                        },
+                        { 
+                            name: "ABSPARMAX", 
+                            required: false, 
+                            type: "float",
+                            description: descriptions.find(desc => desc.Variable === "ABSPARMAX")?.Description || "No description available"
+                        }
                     ];
                 } else if (relativeLine === 5) {
                     // Line 7: PHIREDSWH [NOPTSWITCH] [SPLITSWH] [DOAUI] [DOSENREUSE] [BOUNDSCALE]
                     lineStructure = [
                         // Required variable first - PHIREDSWH (float)
-                        { name: "PHIREDSWH", required: true, type: "float", order: 1 },
+                        { 
+                            name: "PHIREDSWH", 
+                            required: true, 
+                            type: "float", 
+                            order: 1,
+                            min: 0,
+                            max: 1, // between zero and one
+                            description: descriptions.find(desc => desc.Variable === "PHIREDSWH")?.Description || "No description available"
+                        },
                         // Process optional variables
-                        { name: "NOPTSWITCH", required: false, type: "integer", order: 2 },
-                        { name: "SPLITSWH", required: false, type: "float", order: 3 },
-                        { name: "DOAUI", required: false, type: "string", order: 4, allowedValues: ["aui", "auid", "noaui"] },
-                        { name: "DOSENREUSE", required: false, type: "string", order: 5, allowedValues: ["senreuse", "nosenreuse"] },
-                        { name: "BOUNDSCALE", required: false, type: "string", order: 6, allowedValues: ["boundscale", "noboundscale"] }
+                        { 
+                            name: "NOPTSWITCH", 
+                            required: false, 
+                            type: "integer",
+                            min: 1, // one or greater
+                            description: descriptions.find(desc => desc.Variable === "NOPTSWITCH")?.Description || "No description available"
+                        },
+                        { 
+                            name: "SPLITSWH", 
+                            required: false, 
+                            type: "float",
+                            min: 0, // zero or greater
+                            description: descriptions.find(desc => desc.Variable === "SPLITSWH")?.Description || "No description available"
+                        },
+                        { 
+                            name: "DOAUI", 
+                            required: false, 
+                            type: "string",
+                            allowedValues: ["aui", "auid", "noaui"],
+                            description: descriptions.find(desc => desc.Variable === "DOAUI")?.Description || "No description available"
+                        },
+                        { 
+                            name: "DOSENREUSE", 
+                            required: false, 
+                            type: "string",
+                            allowedValues: ["senreuse", "nosenreuse"],
+                            description: descriptions.find(desc => desc.Variable === "DOSENREUSE")?.Description || "No description available"
+                        },
+                        { 
+                            name: "BOUNDSCALE", 
+                            required: false, 
+                            type: "string",
+                            allowedValues: ["boundscale", "noboundscale"],
+                            description: descriptions.find(desc => desc.Variable === "BOUNDSCALE")?.Description || "No description available"
+                        }
                     ];
                 } else if (relativeLine === 6) {
                     // Line 8: NOPTMAX PHIREDSTP NPHISTP NPHINORED RELPARSTP NRELPAR [PHISTOPTHRESH] [LASTRUN] [PHIABANDON]
                     lineStructure = [
                         // Required variables
-                        { name: "NOPTMAX", required: true, type: "integer", order: 1 },
-                        { name: "PHIREDSTP", required: true, type: "float", order: 2 },
-                        { name: "NPHISTP", required: true, type: "integer", order: 3 },
-                        { name: "NPHINORED", required: true, type: "integer", order: 4 },
-                        { name: "RELPARSTP", required: true, type: "float", order: 5 },
-                        { name: "NRELPAR", required: true, type: "integer", order: 6 },
-                        // Optional variables
-                        { name: "PHISTOPTHRESH", required: false, type: "float" },
-                        { name: "LASTRUN", required: false, type: "integer", allowedValues: ["0", "1"] },
-                        { name: "PHIABANDON", required: false, type: "float" }
+                        { 
+                            name: "NOPTMAX", 
+                            required: true, 
+                            type: "integer", 
+                            order: 1,
+                            allowedValues: ["-2", "-1", "0"], // -2, -1, 0 or any number greater than zero
+                            description: descriptions.find(desc => desc.Variable === "NOPTMAX")?.Description || "No description available"
+                        },
+                        { 
+                            name: "PHIREDSTP", 
+                            required: true, 
+                            type: "float", 
+                            order: 2,
+                            min: 0, // greater than zero
+                            description: descriptions.find(desc => desc.Variable === "PHIREDSTP")?.Description || "No description available"
+                        },
+                        { 
+                            name: "NPHISTP", 
+                            required: true, 
+                            type: "integer", 
+                            order: 3,
+                            min: 1, // greater than zero
+                            description: descriptions.find(desc => desc.Variable === "NPHISTP")?.Description || "No description available"
+                        },
+                        { 
+                            name: "NPHINORED", 
+                            required: true, 
+                            type: "integer", 
+                            order: 4,
+                            min: 1, // greater than zero
+                            description: descriptions.find(desc => desc.Variable === "NPHINORED")?.Description || "No description available"
+                        },
+                        { 
+                            name: "RELPARSTP", 
+                            required: true, 
+                            type: "float", 
+                            order: 5,
+                            min: 0, // greater than zero
+                            description: descriptions.find(desc => desc.Variable === "RELPARSTP")?.Description || "No description available"
+                        },
+                        { 
+                            name: "NRELPAR", 
+                            required: true, 
+                            type: "integer", 
+                            order: 6,
+                            min: 1, // greater than zero
+                            description: descriptions.find(desc => desc.Variable === "NRELPAR")?.Description || "No description available"
+                        },
+                        { 
+                            name: "PHISTOPTHRESH", 
+                            required: false, 
+                            type: "float",
+                            min: 0, // zero or greater
+                            description: descriptions.find(desc => desc.Variable === "PHISTOPTHRESH")?.Description || "No description available"
+                        },
+                        { 
+                            name: "LASTRUN", 
+                            required: false, 
+                            type: "integer",
+                            min: 0,
+                            max: 1, // zero or one
+                            allowedValues: ["0", "1"],
+                            description: descriptions.find(desc => desc.Variable === "LASTRUN")?.Description || "No description available"
+                        },
+                        { 
+                            name: "PHIABANDON", 
+                            required: false, 
+                            type: "float",
+                            min: 0, // a positive number
+                            description: descriptions.find(desc => desc.Variable === "PHIABANDON")?.Description || "No description available"
+                        }
                     ];
                 } else if (relativeLine === 7) {
                     // Line 9: ICOV ICOR IEIG [IRES] [JCOSAVE] [VERBOSEREC] [JCOSAVEITN] [REISAVEITN] [PARSAVEITN] [PARSAVERUN]
                     lineStructure = [
-                        // Required variables
-                        {
+                        { 
                             name: "ICOV",
-                            type: "integer",
                             required: true,
-                            description: descriptions.find(desc => desc.Variable === "ICOV")?.Description || "No description available",
-                            allowedValues: ["0", "1"]
+                            type: "integer",
+                            order: 1,
+                            min: 0,
+                            max: 1,
+                            allowedValues: ["0", "1"],
+                            description: descriptions.find(desc => desc.Variable === "ICOV")?.Description || "Record covariance matrix in matrix file"
                         },
-                        {
+                        { 
                             name: "ICOR",
-                            type: "integer",
                             required: true,
-                            description: "Record correlation coefficient matrix in matrix file",
-                            allowedValues: ["0", "1"]
+                            type: "integer",
+                            order: 2,
+                            min: 0,
+                            max: 1,
+                            allowedValues: ["0", "1"],
+                            description: descriptions.find(desc => desc.Variable === "ICOR")?.Description || "Record correlation coefficient matrix in matrix file"
                         },
-                        {
+                        { 
                             name: "IEIG",
-                            type: "integer",
                             required: true,
-                            description: "Record eigenvectors in matrix file",
-                            allowedValues: ["0", "1"]
-                        },
-                        {
-                            name: "IRES",
                             type: "integer",
-                            required: false,
-                            description: "Record resolution data",
-                            allowedValues: ["0", "1"]
+                            order: 3,
+                            min: 0,
+                            max: 1,
+                            allowedValues: ["0", "1"],
+                            description: descriptions.find(desc => desc.Variable === "IEIG")?.Description || "Record eigenvectors in matrix file"
                         },
-                        {
+                        { 
+                            name: "IRES",
+                            required: false,
+                            type: "integer",
+                            min: 0,
+                            max: 1,
+                            allowedValues: ["0", "1"],
+                            description: descriptions.find(desc => desc.Variable === "IRES")?.Description || "Record resolution data"
+                        },
+                        { 
                             name: "JCOSAVE",
-                            type: "string",
                             required: false,
-                            description: "Save best Jacobian file as a JCO file - overwriting previously saved files",
-                            allowedValues: ["jcosave", "nojcosave"]
+                            type: "string",
+                            allowedValues: ["jcosave", "nojcosave"],
+                            description: descriptions.find(desc => desc.Variable === "JCOSAVE")?.Description || "Save best Jacobian file"
                         },
-                        {
+                        { 
                             name: "VERBOSEREC",
-                            type: "string",
                             required: false,
-                            description: "If set to 'noverboserec' parameter and observation data lists are omitted from the run record file",
-                            allowedValues: ["verboserec", "noverboserec"]
+                            type: "string",
+                            allowedValues: ["verboserec", "noverboserec"],
+                            description: descriptions.find(desc => desc.Variable === "VERBOSEREC")?.Description || "Verbose record settings"
                         },
-                        {
+                        { 
                             name: "JCOSAVEITN",
-                            type: "string",
                             required: false,
-                            description: "Write current Jacobian matrix to iteration-specific JCO file",
-                            allowedValues: ["jcosaveitn", "nojcosaveitn"]
+                            type: "string",
+                            allowedValues: ["jcosaveitn", "nojcosaveitn"],
+                            description: descriptions.find(desc => desc.Variable === "JCOSAVEITN")?.Description || "Save iteration-specific Jacobian files"
                         },
-                        {
+                        { 
                             name: "REISAVEITN",
-                            type: "string",
                             required: false,
-                            description: "Store best-fit residuals to iteration-specific residuals file",
-                            allowedValues: ["reisaveitn", "noreisaveitn"]
+                            type: "string",
+                            allowedValues: ["reisaveitn", "noreisaveitn"],
+                            description: descriptions.find(desc => desc.Variable === "REISAVEITN")?.Description || "Save iteration-specific residual files"
                         },
-                        {
+                        { 
                             name: "PARSAVEITN",
-                            type: "string",
                             required: false,
-                            description: "Store iteration specific parameter value files",
-                            allowedValues: ["parsaveitn", "noparsaveitn"]
+                            type: "string",
+                            allowedValues: ["parsaveitn", "noparsaveitn"],
+                            description: descriptions.find(desc => desc.Variable === "PARSAVEITN")?.Description || "Save iteration-specific parameter files"
                         },
-                        {
+                        { 
                             name: "PARSAVERUN",
-                            type: "string",
                             required: false,
-                            description: "Store run specific parameter value files",
-                            allowedValues: ["parsaverun", "noparsaverun"]
+                            type: "string",
+                            allowedValues: ["parsaverun", "noparsaverun"],
+                            description: descriptions.find(desc => desc.Variable === "PARSAVERUN")?.Description || "Save run-specific parameter files"
                         }
                     ];
                 }
@@ -1764,7 +2100,7 @@ export async function activate(
                             type: "string",
                             order: 1,
                             allowedValues: ["0", "1"],
-                            description: "Determines the type of SVD analysis to be performed"
+                            description: descriptions.find(desc => desc.Variable === "SVDMODE")?.Description || "Determines the type of SVD analysis to be performed"
                         }
                     ];
                 } else if (relativeLine === 1) {
@@ -1775,7 +2111,7 @@ export async function activate(
                             required: true,
                             type: "integer",
                             order: 1,
-                            description: "Maximum number of singular values to include in solution",
+                            description: descriptions.find(desc => desc.Variable === "MAXSING")?.Description || "Maximum number of singular values to include in solution",
                             minValue: 1
                         },
                         {
@@ -1783,7 +2119,7 @@ export async function activate(
                             required: true,
                             type: "float",
                             order: 2,
-                            description: "Eigenvalue ratio threshold for truncation",
+                            description: descriptions.find(desc => desc.Variable === "EIGTHRESH")?.Description || "Eigenvalue ratio threshold for truncation",
                             minValue: 0,
                             maxValue: 1
                         }
@@ -1797,14 +2133,10 @@ export async function activate(
                             type: "integer",
                             order: 1,
                             allowedValues: ["0", "1", "2"],
-                            description: "Level of eigenanalysis reporting:\n" +
-                                       "0: Limited reporting\n" +
-                                       "1: Standard reporting\n" +
-                                       "2: Detailed reporting"
+                            description: descriptions.find(desc => desc.Variable === "EIGWRITE")?.Description || "Level of eigenanalysis reporting:\n0: Limited reporting\n1: Standard reporting\n2: Detailed reporting"
                         }
                     ];
                 }
-    
                 if (!lineStructure) {
                     console.log('No se encontró estructura para la línea');
                     return null;
@@ -1839,7 +2171,7 @@ export async function activate(
                 
                 // Crear el contenido del hover
                 const hoverContent = new vscode.MarkdownString();
-                hoverContent.supportHtml = true;
+                hoverContent.isTrusted = true;
                 hoverContent.appendMarkdown(`### 🔢 SVD Variable: ${variable.name}\n\n`);
                 hoverContent.appendMarkdown(`📝 **Description:** ${variable.description}\n\n`);
                 hoverContent.appendMarkdown(`📋 **Type:** \`${variable.type}\`\n\n`);
@@ -1859,6 +2191,8 @@ export async function activate(
     
                 if (!isValid) {
                     hoverContent.appendMarkdown(`\n⚠️ **Warning:** Value \`${hoveredWord}\` is not valid for this variable.\n`);
+                    hoverContent.appendMarkdown(`🔍 Recommend running PestCheck to validate the file\n\n`);
+                    hoverContent.appendMarkdown(`[Run PestCheck](command:pestd3code.runPestCheck)`);
                 }
     
                 console.log("=== SVD Hover Provider Completed ===");
@@ -1938,12 +2272,23 @@ export async function activate(
         // Line 3: NPAR NOBS NPARGP NPRIOR NOBSGP [MAXCOMPDIM] [DERZEROLIM]
         else if (indexline === 1) {
             // Required variables (all integers)
-            const requiredNames = ["NPAR", "NOBS", "NPARGP", "NPRIOR", "NOBSGP"];
+            const requiredNames = ["NPAR", "NOBS", "NPARGP", "NPRIOR"];
             for (let i = 0; i < requiredNames.length && i < values.length; i++) {
                 const valid = validateType(values[i], "integer");
                 mapped.push({
                     name: requiredNames[i],
                     value: values[i],
+                    valid: valid,
+                    id: 1
+                });
+            }
+
+            // NOBSGP requires special validation (min value = 1)
+            if (values.length > 4) {
+                const valid = validateType(values[4], "integer", undefined, 1);
+                mapped.push({
+                    name: "NOBSGP",
+                    value: values[4],
                     valid: valid,
                     id: 1
                 });
@@ -2578,10 +2923,10 @@ export async function activate(
 
     function createUndefinedVariableHover(): vscode.Hover {
                         const markdown = new vscode.MarkdownString();
-        markdown.isTrusted = true;
+                        markdown.isTrusted = true;
                         markdown.appendMarkdown(`### ⚠️ Undefined Variable\n\n`);
                         markdown.appendMarkdown(`🔍 Recommend running PestCheck to validate the file\n\n`);
-                        markdown.appendMarkdown(`[Run PestCheck](command:pestd3code.runPestCheck)`);
+                        markdown.appendMarkdown(`[Run PestCheck](command:pestd3code.runPestCheck "Run PestCheck")`);
                         return new vscode.Hover(markdown);
                     }
 
@@ -2589,26 +2934,22 @@ export async function activate(
         console.log('\n=== Creating Hover Content ===');
         console.log(`Variable: ${variable.name}, Value="${variable.value}", Valid=${variable.valid}`);
 
-        const varStructure = structure.find((v: { name: string; type: string; description?: string; required: boolean; allowedValues?: string[] }) => v.name === variable.name);
+        const varStructure = structure.find((v: { name: string; type: string; description?: string; required: boolean; allowedValues?: string[], min?: number, max?: number }) => v.name === variable.name);
         if (!varStructure) {
             console.log('No structure found for variable');
-                            return null;
-                }
+            return null;
+        }
 
         console.log('Structure found:');
         console.log(`  Type: ${varStructure.type}`);
         console.log(`  Required: ${varStructure.required}`);
-        console.log(`  Has Description: ${!!varStructure.description}`);
-        console.log(`  Has Allowed Values: ${!!varStructure.allowedValues}`);
+        console.log(`  Min Value: ${varStructure.min !== undefined ? varStructure.min : 'not set'}`);
+        console.log(`  Max Value: ${varStructure.max !== undefined ? varStructure.max : 'not set'}`);
 
-        // Verificar si el valor es válido para variables opcionales con allowedValues
-        let isValidValue = true;
-        if (variable.value !== "MISSING" && varStructure.allowedValues) {
-            isValidValue = varStructure.allowedValues.includes(variable.value);
-            console.log(`Checking optional value validity: ${isValidValue}`);
-        }
+        const isValid = validateType(variable.value, varStructure.type, varStructure.allowedValues, varStructure.min, varStructure.max);
 
         const markdown = new vscode.MarkdownString();
+        markdown.isTrusted = true;
         markdown.appendMarkdown(
             `### 🔧 Control Data Variable: **${varStructure.name}**\n\n` +
             `📝 **Description:** ${varStructure.description || "No description available"}\n\n` +
@@ -2616,14 +2957,22 @@ export async function activate(
             (varStructure.allowedValues
                 ? `✅ **Allowed Values:** ${varStructure.allowedValues.map((v: any) => `\`${v}\``).join(", ")}\n\n`
                 : "") +
-            `❗ **Required:** ${varStructure.required ? "Yes" : "No"}`
+            `❗ **Required:** ${varStructure.required ? "Yes" : "No"}\n\n` +
+            (varStructure.min !== undefined
+                ? `⬇️ **Minimum Value:** ${varStructure.min}\n\n`
+                : "") +
+            (varStructure.max !== undefined
+                ? `⬆️ **Maximum Value:** ${varStructure.max}\n\n`
+                : "")
         );
 
         // Mostrar warning para variables inválidas (requeridas u opcionales)
-        if (!variable.valid || !isValidValue) {
+        if (!variable.valid || !isValid) {
             console.log('Adding invalid value warning');
             markdown.appendMarkdown(
-                `\n\n⚠️ **Invalid Value:** \`${variable.value}\` does not satisfy the requirements.`
+                `\n\n⚠️ **Invalid Value:** \`${variable.value}\` does not satisfy the requirements.\n\n` +
+                `🔍 Recommend running PestCheck to validate the file\n\n` +
+                `[Run PestCheck](command:pestd3code.runPestCheck)`
             );
         }
 
@@ -2642,19 +2991,19 @@ export async function activate(
                 const intValue = parseInt(value);
                 const isInt = !isNaN(intValue) && Number.isInteger(Number(value));
                 console.log(`  Integer validation result: ${isInt}`);
-                if (minValue !== undefined && maxValue !== undefined) {
-                    return isInt && intValue >= minValue && intValue <= maxValue;
-                }
-                return isInt;
+                if (!isInt) return false;
+                if (minValue !== undefined && intValue < minValue) return false;
+                if (maxValue !== undefined && intValue > maxValue) return false;
+                return true;
             
             case 'float':
                 const floatValue = parseFloat(value);
                 const isFloat = !isNaN(floatValue) && Number.isFinite(Number(value));
                 console.log(`  Float validation result: ${isFloat}`);
-                if (minValue !== undefined && maxValue !== undefined) {
-                    return isFloat && floatValue >= minValue && floatValue <= maxValue;
-                }
-                return isFloat;
+                if (!isFloat) return false;
+                if (minValue !== undefined && floatValue < minValue) return false;
+                if (maxValue !== undefined && floatValue > maxValue) return false;
+                return true;
                 
             case 'string':
                 return typeof value === 'string';
