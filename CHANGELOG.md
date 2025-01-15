@@ -1,5 +1,20 @@
 # Change Log
 
+### 0.1.2
+- **New Feature: Variable Hover Information**:
+  - Added hover information for variables in `.pst` files, providing detailed descriptions, types, and allowed values.
+  - Enhanced user experience by displaying warnings for invalid variable values directly in the hover tooltip.
+  - Included console logs to track hover creation and variable validation processes.
+
+- **Improved Type Validation**:
+  - Enhanced type validation logic for integer, float, and string types.
+  - Added support for validating string values against allowed values.
+  - Included detailed console logs to provide insights into the type validation process.
+
+- **Bug Fixes and Performance Improvements**:
+  - Fixed issues related to variable parsing and hover information display.
+  - Optimized the extension's performance for faster execution and smoother user experience.
+
 ### 0.1.1
 - Contact information updated in README.md
 ### 0.1.0

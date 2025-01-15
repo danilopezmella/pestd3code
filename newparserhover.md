@@ -9,6 +9,12 @@ Line 8 (relativeLine: 8, indexline: 6): NOPTMAX PHIREDSTP NPHISTP NPHINORED RELP
 Line 9 (relativeLine: 9, indexline: 7): ICOV ICOR IEIG [IRES] [JCOSAVE] [VERBOSEREC] [JCOSAVEITN] [REISAVEITN] [PARSAVEITN] [PARSAVERUN]
 
 
+SVD
+
+SVDMODE
+MAXSING EIGTHRESH
+EIGWRITE
+
 
 1,1,control data,RSTFLE,text,“restart” or “norestart”,instructs PEST whether to write restart data,1,1,required,,,,,
 2,2,control data,PESTMODE,text,“estimation prediction regularization pareto”,PEST’s mode of operation,1,2,required,,,,,
@@ -64,5 +70,9 @@ Line 9 (relativeLine: 9, indexline: 7): ICOV ICOR IEIG [IRES] [JCOSAVE] [VERBOSE
 53,53,control data,REISAVEITN,text,“reisaveitn” or “noreisaveitn”,store best-fit residuals to iteration-specific residuals file at end of every optimization iteration,8,8,optional,,,,,
 54,54,control data,PARSAVEITN,text,“parsaveitn” or “noparsaveitn”,store iteration specific parameter value files,8,9,optional,,,,,
 55,55,control data,PARSAVERUN,text,“parsaverun” or “noparsaverun”,store run specific parameter value files,8,10,optional,,,,,
+71,71,singular value decomposition,SVDMODE,integer,zero or one,activates truncated singular value decomposition for solution of inverse problem,#N/A,#N/A,#N/A,,,,,
+72,72,singular value decomposition,MAXSING,integer,greater than zero,number of singular values at which truncation occurs,#N/A,#N/A,#N/A,,,,,
+73,73,singular value decomposition,EIGTHRESH,real,zero or greater but less than one,eigenvalue ratio threshold for truncation,#N/A,#N/A,#N/A,,,,,
+74,74,singular value decomposition,EIGWRITE,integer,zero or one,determines co
 
 

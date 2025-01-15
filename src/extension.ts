@@ -363,35 +363,38 @@ class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
 //#endregion Document Symbol Provider
 
 // #region Validate type of the variable
-function validateType(
-    value: string,
-    type: "string" | "integer" | "float",
-    allowedValues?: string[]
-): boolean {
+function validateType(value: string, type: string, allowedValues?: string[], minValue?: number, maxValue?: number): boolean {
     console.log(`Validating Type: Value="${value}", Type=${type}`);
     
-    if (type === "integer") {
-        const isInteger = /^-?\d+$/.test(value);
-        console.log(`Validation result: ${isInteger}`);
-        return isInteger;
-    } else if (type === "float") {
-        const isFloat = /^-?\d*\.?\d+$/.test(value);
-        console.log(`Validation result: ${isFloat}`);
-        return isFloat;
-    } else if (type === "string") {
-        if (allowedValues && allowedValues.length > 0) {
-            const isValid = allowedValues.includes(value.toLowerCase());
-            console.log(`Validating string against allowed values: ${allowedValues.join(", ")}`);
-            console.log(`Validation result: ${isValid}`);
-            return isValid;
-        }
-        // Si no hay allowedValues, cualquier string es válido
-        console.log(`Validation result: true (no allowed values specified)`);
-        return true;
+    if (allowedValues && allowedValues.length > 0) {
+        return allowedValues.includes(value);
     }
-    
-    console.log(`Validation result: false (unknown type)`);
-    return false;
+
+    switch (type.toLowerCase()) {
+        case 'integer':
+            const intValue = parseInt(value);
+            const isInt = !isNaN(intValue) && Number.isInteger(Number(value));
+            console.log(`  Integer validation result: ${isInt}`);
+            if (minValue !== undefined && maxValue !== undefined) {
+                return isInt && intValue >= minValue && intValue <= maxValue;
+            }
+            return isInt;
+        
+        case 'float':
+            const floatValue = parseFloat(value);
+            const isFloat = !isNaN(floatValue) && Number.isFinite(Number(value));
+            console.log(`  Float validation result: ${isFloat}`);
+            if (minValue !== undefined && maxValue !== undefined) {
+                return isFloat && floatValue >= minValue && floatValue <= maxValue;
+            }
+            return isFloat;
+            
+        case 'string':
+            return typeof value === 'string';
+            
+        default:
+            return false;
+    }
 }
 // #endregion Validate type of the variable
 
@@ -1485,7 +1488,7 @@ export async function activate(
 
     // #region Hover provider for control data and SVD sections
 
-    const hoverProvider = vscode.languages.registerHoverProvider(
+    const controlDataHoverProvider = vscode.languages.registerHoverProvider(
         { scheme: "file" },
         {
             provideHover(document, position) {
@@ -1493,13 +1496,14 @@ export async function activate(
                 const sections = detectSections(lines);
                 const currentSection = findCurrentSection(sections, position.line);
 
-                if (!isRecognizedSection(currentSection)) {
+                if (!currentSection || currentSection.parent !== "control data") {
+                    console.log("Not in Control Data section, skipping general hover");
                     return null;
                 }
 
-                const structure = getStructureForSection(currentSection);
-                if (!structure || !currentSection) {
-                    return null;
+                       if (!currentSection || currentSection.parent !== "control data") {
+                console.log("Not in Control Data section, skipping general hover");
+                return null;
                 }
 
                 // Ajustamos el índice para que coincida con la estructura de control data
@@ -1604,17 +1608,76 @@ export async function activate(
                     // Line 9: ICOV ICOR IEIG [IRES] [JCOSAVE] [VERBOSEREC] [JCOSAVEITN] [REISAVEITN] [PARSAVEITN] [PARSAVERUN]
                     lineStructure = [
                         // Required variables
-                        { name: "ICOV", required: true, type: "integer", order: 1, allowedValues: ["0", "1"] },
-                        { name: "ICOR", required: true, type: "integer", order: 2, allowedValues: ["0", "1"] },
-                        { name: "IEIG", required: true, type: "integer", order: 3, allowedValues: ["0", "1"] },
-                        // Optional variables
-                        { name: "IRES", required: false, type: "integer", allowedValues: ["0", "1"] },
-                        { name: "JCOSAVE", required: false, type: "string", allowedValues: ["jcosave", "nojcosave"] },
-                        { name: "VERBOSEREC", required: false, type: "string", allowedValues: ["verboserec", "noverboserec"] },
-                        { name: "JCOSAVEITN", required: false, type: "string", allowedValues: ["jcosaveitn", "nojcosaveitn"] },
-                        { name: "REISAVEITN", required: false, type: "string", allowedValues: ["reisaveitn", "noreisaveitn"] },
-                        { name: "PARSAVEITN", required: false, type: "string", allowedValues: ["parsaveitn", "noparsaveitn"] },
-                        { name: "PARSAVERUN", required: false, type: "string", allowedValues: ["parsaverun", "noparsaverun"] }
+                        {
+                            name: "ICOV",
+                            type: "integer",
+                            required: true,
+                            description: descriptions.find(desc => desc.Variable === "ICOV")?.Description || "No description available",
+                            allowedValues: ["0", "1"]
+                        },
+                        {
+                            name: "ICOR",
+                            type: "integer",
+                            required: true,
+                            description: "Record correlation coefficient matrix in matrix file",
+                            allowedValues: ["0", "1"]
+                        },
+                        {
+                            name: "IEIG",
+                            type: "integer",
+                            required: true,
+                            description: "Record eigenvectors in matrix file",
+                            allowedValues: ["0", "1"]
+                        },
+                        {
+                            name: "IRES",
+                            type: "integer",
+                            required: false,
+                            description: "Record resolution data",
+                            allowedValues: ["0", "1"]
+                        },
+                        {
+                            name: "JCOSAVE",
+                            type: "string",
+                            required: false,
+                            description: "Save best Jacobian file as a JCO file - overwriting previously saved files",
+                            allowedValues: ["jcosave", "nojcosave"]
+                        },
+                        {
+                            name: "VERBOSEREC",
+                            type: "string",
+                            required: false,
+                            description: "If set to 'noverboserec' parameter and observation data lists are omitted from the run record file",
+                            allowedValues: ["verboserec", "noverboserec"]
+                        },
+                        {
+                            name: "JCOSAVEITN",
+                            type: "string",
+                            required: false,
+                            description: "Write current Jacobian matrix to iteration-specific JCO file",
+                            allowedValues: ["jcosaveitn", "nojcosaveitn"]
+                        },
+                        {
+                            name: "REISAVEITN",
+                            type: "string",
+                            required: false,
+                            description: "Store best-fit residuals to iteration-specific residuals file",
+                            allowedValues: ["reisaveitn", "noreisaveitn"]
+                        },
+                        {
+                            name: "PARSAVEITN",
+                            type: "string",
+                            required: false,
+                            description: "Store iteration specific parameter value files",
+                            allowedValues: ["parsaveitn", "noparsaveitn"]
+                        },
+                        {
+                            name: "PARSAVERUN",
+                            type: "string",
+                            required: false,
+                            description: "Store run specific parameter value files",
+                            allowedValues: ["parsaverun", "noparsaverun"]
+                        }
                     ];
                 }
 
@@ -1638,7 +1701,7 @@ export async function activate(
                 }
 
                 // Obtener la palabra bajo el cursor
-                const wordRange = document.getWordRangeAtPosition(position, /[^\s]+/);
+                const wordRange = document.getWordRangeAtPosition(position, /[+-]?\d*\.?\d+(?:[eE][+-]?\d+)?|\S+/);
                 if (!wordRange) {
                     return null;
                 }
@@ -1647,7 +1710,8 @@ export async function activate(
                 const lineUpToCursor = document.getText(
                     new vscode.Range(position.line, 0, position.line, position.character)
                 );
-                const wordsBeforeCursor = lineUpToCursor.trimStart().split(/\s+/);
+                // Usar regex que preserve números en notación científica
+                const wordsBeforeCursor = lineUpToCursor.trimStart().match(/[+-]?\d*\.?\d+(?:[eE][+-]?\d+)?|\S+/g) || [];
                 const occurrence = wordsBeforeCursor.filter(w => w === hoveredWord).length;
 
                 // Encontrar la variable correspondiente
@@ -1657,7 +1721,148 @@ export async function activate(
                 }
 
                 // Generar el hover para la variable
-                return createVariableHover(matchedVariable, lineStructure);
+                return createControlDataHover(matchedVariable, lineStructure);
+            }
+        }
+    );
+
+    const svdHoverProvider = vscode.languages.registerHoverProvider(
+        { scheme: "file", pattern: "**/*.{pst}" },
+        {
+            provideHover(document, position) {
+                console.log("=== SVD Hover Provider Started ===");
+                const lines = document.getText().split("\n");
+                const sections = detectSections(lines);
+                const currentSection = findCurrentSection(sections, position.line);
+    
+                // Verificar si estamos en la sección SVD
+                if (!currentSection || (currentSection.parent.toLowerCase() !== "singular value decomposition" && currentSection.parent.toLowerCase() !== "svd")) {
+                    console.log("Not in SVD section");
+                    return null;
+                }
+    
+                // Calcular línea relativa dentro de la sección SVD
+                const relativeLine = position.line - currentSection.start - 1;
+                console.log(`Position Line: ${position.line}`);
+                console.log(`Section Start: ${currentSection.start}`);
+                console.log(`Relative Line (adjusted): ${relativeLine}`);
+    
+                // Ignorar la línea de encabezado
+                if (relativeLine < 0) {
+                    console.log('Índice negativo detectado, ignorando línea de encabezado');
+                    return null;
+                }
+    
+                // Definir la estructura según la línea
+                let lineStructure;
+                if (relativeLine === 0) {
+                    // Primera línea: SVDMODE
+                    lineStructure = [
+                        {
+                            name: "SVDMODE",
+                            required: true,
+                            type: "string",
+                            order: 1,
+                            allowedValues: ["0", "1"],
+                            description: "Determines the type of SVD analysis to be performed"
+                        }
+                    ];
+                } else if (relativeLine === 1) {
+                    // Segunda línea: MAXSING EIGTHRESH
+                    lineStructure = [
+                        {
+                            name: "MAXSING",
+                            required: true,
+                            type: "integer",
+                            order: 1,
+                            description: "Maximum number of singular values to include in solution",
+                            minValue: 1
+                        },
+                        {
+                            name: "EIGTHRESH",
+                            required: true,
+                            type: "float",
+                            order: 2,
+                            description: "Eigenvalue ratio threshold for truncation",
+                            minValue: 0,
+                            maxValue: 1
+                        }
+                    ];
+                } else if (relativeLine === 2) {
+                    // Tercera línea: EIGWRITE
+                    lineStructure = [
+                        {
+                            name: "EIGWRITE",
+                            required: true,
+                            type: "integer",
+                            order: 1,
+                            allowedValues: ["0", "1", "2"],
+                            description: "Level of eigenanalysis reporting:\n" +
+                                       "0: Limited reporting\n" +
+                                       "1: Standard reporting\n" +
+                                       "2: Detailed reporting"
+                        }
+                    ];
+                }
+    
+                if (!lineStructure) {
+                    console.log('No se encontró estructura para la línea');
+                    return null;
+                }
+    
+                // Obtener la palabra bajo el cursor
+                const wordRange = document.getWordRangeAtPosition(position, /[+-]?\d*\.?\d+(?:[eE][+-]?\d+)?|\S+/);
+                if (!wordRange) {
+                    return null;
+                }
+    
+                const hoveredWord = document.getText(wordRange);
+                const lineUpToCursor = document.getText(
+                    new vscode.Range(position.line, 0, position.line, position.character)
+                );
+                const wordsBeforeCursor = lineUpToCursor.trimStart().match(/[+-]?\d*\.?\d+(?:[eE][+-]?\d+)?|\S+/g) || [];
+                const occurrence = wordsBeforeCursor.filter(w => w === hoveredWord).length;
+    
+                // Encontrar la variable correspondiente basada en la posición
+                const wordIndex = wordsBeforeCursor.length - 1;
+                const variable = lineStructure[wordIndex];
+    
+                if (!variable) {
+                    return null;
+                }
+    
+                console.log(`Found variable: ${variable.name} for word: ${hoveredWord}`);
+    
+                // Validar el valor
+                const isValid = validateType(hoveredWord, variable.type, variable.allowedValues, variable.minValue, variable.maxValue);
+    
+                
+                // Crear el contenido del hover
+                const hoverContent = new vscode.MarkdownString();
+                hoverContent.supportHtml = true;
+                hoverContent.appendMarkdown(`### 🔢 SVD Variable: ${variable.name}\n\n`);
+                hoverContent.appendMarkdown(`📝 **Description:** ${variable.description}\n\n`);
+                hoverContent.appendMarkdown(`📋 **Type:** \`${variable.type}\`\n\n`);
+                hoverContent.appendMarkdown(`❗ **Required:** ${variable.required ? "Yes" : "No"}\n\n`);
+    
+                if (variable.allowedValues) {
+                    hoverContent.appendMarkdown(`✅ **Allowed Values:** ${variable.allowedValues.join(", ")}\n\n`);
+                }
+    
+                if (variable.minValue !== undefined) {
+                    hoverContent.appendMarkdown(`⬇️ **Minimum Value:** ${variable.minValue}\n\n`);
+                }
+    
+                if (variable.maxValue !== undefined) {
+                    hoverContent.appendMarkdown(`⬆️ **Maximum Value:** ${variable.maxValue}\n\n`);
+                }
+    
+                if (!isValid) {
+                    hoverContent.appendMarkdown(`\n⚠️ **Warning:** Value \`${hoveredWord}\` is not valid for this variable.\n`);
+                }
+    
+                console.log("=== SVD Hover Provider Completed ===");
+                return new vscode.Hover(hoverContent);
             }
         }
     );
@@ -1697,7 +1902,7 @@ export async function activate(
         indexline: number,
         line: string,
         values: string[],
-        structure: any[]
+        _structure: any[]
     ): ParsedVariable[] | null {
         console.log('\n=== Control Data Line Parsing ===');
         console.log(`Line Index: ${indexline}`);
@@ -2345,6 +2550,8 @@ export async function activate(
         return mapped;
     }
 
+
+
     function findMatchingVariable(
         variables: ParsedVariable[],
         word: string,
@@ -2359,7 +2566,7 @@ export async function activate(
             if (v.value === word) {
                 console.log(`    Match found! Is it the right occurrence? ${count === occurrence}`);
                 const isMatch = count === occurrence;
-                if (!isMatch) count++;
+                if (!isMatch) {count++;}
                 return isMatch;
             }
             return false;
@@ -2378,15 +2585,15 @@ export async function activate(
                         return new vscode.Hover(markdown);
                     }
 
-    function createVariableHover(variable: ParsedVariable, structure: any[]): vscode.Hover | null {
+    function createControlDataHover(variable: ParsedVariable, structure: any[]): vscode.Hover | null {
         console.log('\n=== Creating Hover Content ===');
         console.log(`Variable: ${variable.name}, Value="${variable.value}", Valid=${variable.valid}`);
 
         const varStructure = structure.find((v: { name: string; type: string; description?: string; required: boolean; allowedValues?: string[] }) => v.name === variable.name);
         if (!varStructure) {
             console.log('No structure found for variable');
-            return null;
-        }
+                            return null;
+                }
 
         console.log('Structure found:');
         console.log(`  Type: ${varStructure.type}`);
@@ -2403,13 +2610,13 @@ export async function activate(
 
         const markdown = new vscode.MarkdownString();
         markdown.appendMarkdown(
-            `### 🏷️ Variable: **${varStructure.name}**\n\n` +
-            `📖 **Description:** ${varStructure.description || "No description available"}\n\n` +
-            `📐 **Type:** \`${varStructure.type}\`\n\n` +
+            `### 🔧 Control Data Variable: **${varStructure.name}**\n\n` +
+            `📝 **Description:** ${varStructure.description || "No description available"}\n\n` +
+            `📋 **Type:** \`${varStructure.type}\`\n\n` +
             (varStructure.allowedValues
-                ? `🔢 **Allowed Values:** ${varStructure.allowedValues.map((v: any) => `\`${v}\``).join(", ")}\n\n`
+                ? `✅ **Allowed Values:** ${varStructure.allowedValues.map((v: any) => `\`${v}\``).join(", ")}\n\n`
                 : "") +
-            `❓ **Required:** ${varStructure.required ? "Yes" : "No"}`
+            `❗ **Required:** ${varStructure.required ? "Yes" : "No"}`
         );
 
         // Mostrar warning para variables inválidas (requeridas u opcionales)
@@ -2423,32 +2630,38 @@ export async function activate(
         return new vscode.Hover(markdown);
     }
 
-    function validateType(value: string, type: string, allowedValues?: string[]): boolean {
+    function validateType(value: string, type: string, allowedValues?: string[], minValue?: number, maxValue?: number): boolean {
         console.log(`Validating Type: Value="${value}", Type=${type}`);
-        if (allowedValues) {
-            console.log(`  Allowed Values: [${allowedValues.join(", ")}]`);
-        }
         
-        if (type === "integer") {
-            const isInteger = /^-?\d+$/.test(value);
-            console.log(`  Integer validation result: ${isInteger}`);
-            return isInteger;
-        } else if (type === "float") {
-            const isFloat = /^-?\d*\.?\d+$/.test(value);
-            console.log(`  Float validation result: ${isFloat}`);
-            return isFloat;
-        } else if (type === "string") {
-            if (allowedValues && allowedValues.length > 0) {
-                const isValid = allowedValues.includes(value.toLowerCase());
-                console.log(`  String validation against allowed values: ${isValid}`);
-                return isValid;
-            }
-            console.log(`  String validation: true (no allowed values specified)`);
-            return true;
+        if (allowedValues && allowedValues.length > 0) {
+            return allowedValues.includes(value);
         }
-        
-        console.log(`  Validation result: false (unknown type)`);
-        return false;
+
+        switch (type.toLowerCase()) {
+            case 'integer':
+                const intValue = parseInt(value);
+                const isInt = !isNaN(intValue) && Number.isInteger(Number(value));
+                console.log(`  Integer validation result: ${isInt}`);
+                if (minValue !== undefined && maxValue !== undefined) {
+                    return isInt && intValue >= minValue && intValue <= maxValue;
+                }
+                return isInt;
+            
+            case 'float':
+                const floatValue = parseFloat(value);
+                const isFloat = !isNaN(floatValue) && Number.isFinite(Number(value));
+                console.log(`  Float validation result: ${isFloat}`);
+                if (minValue !== undefined && maxValue !== undefined) {
+                    return isFloat && floatValue >= minValue && floatValue <= maxValue;
+                }
+                return isFloat;
+                
+            case 'string':
+                return typeof value === 'string';
+                
+            default:
+                return false;
+        }
     }
 
     interface Section {
@@ -3266,7 +3479,7 @@ export async function activate(
                 }
 
                 // Get the word under cursor
-                const wordRange = document.getWordRangeAtPosition(position);
+                const wordRange = document.getWordRangeAtPosition(position, /[+-]?\d*\.?\d+(?:[eE][+-]?\d+)?|\S+/);
                 if (!wordRange) {
                     return null;
                 }
@@ -3344,7 +3557,8 @@ export async function activate(
 
     context.subscriptions.push(manualCodeLensProvider);
     context.subscriptions.push(disposable);
-    context.subscriptions.push(hoverProvider);
+    context.subscriptions.push(controlDataHoverProvider);
+    context.subscriptions.push(svdHoverProvider);
     disposables.push(foldingProvider);
     context.subscriptions.push(handleClick);
     context.subscriptions.push(codeLensProvider);
