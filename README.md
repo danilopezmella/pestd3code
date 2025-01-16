@@ -37,10 +37,16 @@ The **most important feature** of this extension is that it works **WITHOUT** mo
 - **Modern UI:** Clean and intuitive interface design
 
 ### 💡 Intelligent Assistance
-- **Hover Tooltips:** Detailed descriptions of PEST control variables
+- **Enhanced Hover Tooltips:** 
+  - Real-time type validation (integer, float, string)
+  - Minimum/Maximum value constraints
+  - Required field indicators
+  - Detailed variable descriptions
+  - PestCheck validation recommendations
 - **Context Help:** Access variable descriptions and requirements instantly
-- **Value Validation:** View allowed values and data types
+- **Value Validation:** View allowed values and data types with immediate feedback
 - **Smart Suggestions:** Get helpful hints while editing
+- **Inline Error Detection:** Highlights invalid values directly in the editor
 
 ### 🛠️ PestCheck Integration
 - **OS-Agnostic Support:** Auto-locate Pestcheck across different operating systems
