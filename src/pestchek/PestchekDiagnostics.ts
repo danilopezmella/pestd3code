@@ -77,6 +77,22 @@ export function parsePestchekOutput(output: string): PestchekResult[] {
             continue;
         }
 
+        // Detect regularisation mode error
+        if (line.includes('If PEST is run in regularisation mode')) {
+            let fullMessage = line;
+            // Collect the full multi-line message
+            while (i + 1 < lines.length && lines[i + 1].trim() && !lines[i + 1].startsWith('*')) {
+                fullMessage += ' ' + lines[++i].trim();
+            }
+            results.push(createDiagnostic(
+                'ERROR',
+                fullMessage.trim(),
+                undefined,
+                DiagnosticSeverity.Error
+            ));
+            continue;
+        }
+
         // Detect section changes
         if (line === 'Errors ----->') {
             // If we were collecting a warning message, add it before changing sections

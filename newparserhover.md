@@ -15,6 +15,11 @@ SVDMODE
 MAXSING EIGTHRESH
 EIGWRITE
 
+ regularisation 
+PHIMLIM  PHIMACCEPT [FRACPHIM] [MEMSAVE]  
+WFINIT  WFMIN  WFMAX  [LINREG] [REGCONTINUE] 
+WFFAC  WFTOL IREGADJ [NOPTREGADJ REGWEIGHTRAT [REGSINGTHRESH]] 
+
 
 1,1,control data,RSTFLE,text,“restart” or “norestart”,instructs PEST whether to write restart data,1,1,required,,,,,
 2,2,control data,PESTMODE,text,“estimation prediction regularization pareto”,PEST’s mode of operation,1,2,required,,,,,
@@ -74,5 +79,20 @@ EIGWRITE
 72,72,singular value decomposition,MAXSING,integer,greater than zero,number of singular values at which truncation occurs,#N/A,#N/A,#N/A,,,,,
 73,73,singular value decomposition,EIGTHRESH,real,zero or greater but less than one,eigenvalue ratio threshold for truncation,#N/A,#N/A,#N/A,,,,,
 74,74,singular value decomposition,EIGWRITE,integer,zero or one,determines co
+145,145,regularization,PHIMLIM,real,greater than zero,target measurement objective function,1,1,required,,,,,
+146,146,regularization,PHIMACCEPT,real,greater than PHIMLIM,acceptable measurement objective function,1,2,required,,,,,
+147,147,regularization,FRACPHIM,real,zero or greater,set target measurement objective function at this fraction of current measurement objective function set target measurement objective function at this fraction of current measurement objective function,1,3,optional,,,,
+148,148,regularization,MEMSAVE,text,"memsave or ""nomemsave""",activate conservation of memory at cost of execution speed and quantity of model output,1,4,optional,,,,,
+149,149,regularization,WFINIT,real,greater than zero,initial regularization weight factor,2,1,required,,,,,
+150,150,regularization,WFMIN,real,greater than zero,minimum regularization weight factor,2,2,required,,,,,
+151,151,regularization,WFMAX,real,greater than WFMAX,maximum regularization weight factor,2,3,required,,,,,
+152,152,regularization,LINREG,text,"linreg or ""nonlinreg""",informs PEST that all regularization constraints are linear,2,4,optional,,,,,
+153,153,regularization,REGCONTINUE,text,"continue or ""nocontinue""",instructs PEST to continue minimising regularization objective function even if measurement objective function less than PHIMLIM,2,5,optional,,,,,
+154,154,regularization,WFFAC,real,greater than one,regularization weight factor adjustment factor,3,1,required,,,,,
+155,155,regularization,WFTOL,real,greater than zero,convergence criterion for regularization weight factor,3,2,required,,,,,
+156,156,regularization,IREGADJ,integer,0,instructs PEST to perform inter-regularization group weight factor adjustment or to compute new relative weights for regularization observations and prior information equations 2 3  4 or 5 instructs PEST to perform inter-regularization group weight factor adjustment or to compute new relative weights for regularization observations and prior information equations,3,3,required
+157,157,regularization,NOPTREGADJ,integer,one or greater,the optimization iteration interval for re-calculation of regularization weights if IREGADJ is 4 or 5,3,4,optional,,,,,
+158,158,regularization,REGWEIGHTRAT,real,absolute value of one or greater,the ratio of highest to lowest regularization weight; spread is logarithmic with null space projection if set negative,3,5,optional,,,,,
+159,159,regularization,REGSINGTHRESH,real,less than one and greater than zero,singular value of JtQJ (as factor of highest singular value) at which use of higher regularization weights commences if IREGADJ is set to 5,3,6,optional,,,,,
 
 
