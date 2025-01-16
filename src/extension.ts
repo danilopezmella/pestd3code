@@ -390,18 +390,18 @@ function validateType(value: string, type: string, allowedValues?: string[], min
             const intValue = parseInt(value);
             const isInt = !isNaN(intValue) && Number.isInteger(Number(value));
             console.log(`  Integer validation result: ${isInt}`);
-            if (!isInt) return false;
-            if (minValue !== undefined && intValue < minValue) return false;
-            if (maxValue !== undefined && intValue > maxValue) return false;
+            if (!isInt) { return false; }
+            if (minValue !== undefined && intValue < minValue) { return false; }
+            if (maxValue !== undefined && intValue > maxValue) { return false; }
             return true;
 
         case 'float':
             const floatValue = parseFloat(value);
             const isFloat = !isNaN(floatValue) && Number.isFinite(Number(value));
             console.log(`  Float validation result: ${isFloat}`);
-            if (!isFloat) return false;
-            if (minValue !== undefined && floatValue < minValue) return false;
-            if (maxValue !== undefined && floatValue > maxValue) return false;
+            if (!isFloat) { return false; }
+            if (minValue !== undefined && floatValue < minValue) { return false; }
+            if (maxValue !== undefined && floatValue > maxValue) { return false; }
             return true;
 
         case 'string':
@@ -1596,7 +1596,7 @@ export async function activate(
         { name: "REGSINGTHRESH", type: "float", required: false }
     ];
 
-    function parseRegularisationLine(lineIndex: number, values: string[], structure: any[]): ParsedVariable[] {
+    function parseRegularisationLine(_lineIndex: number, values: string[], structure: any[]): ParsedVariable[] {
         const mapped: ParsedVariable[] = [];
 
         // Procesar variables requeridas primero
@@ -1771,7 +1771,7 @@ export async function activate(
                 for (let i = 0; i < values.length; i++) {
                     // Find where this value starts in the line
                     const valuePos = lineText.indexOf(values[i], currentPos);
-                    if (valuePos === -1) continue;
+                    if (valuePos === -1) { continue; }
 
                     console.log(`Value "${values[i]}" starts at position ${valuePos} and ends at ${valuePos + values[i].length - 1}`);
 
@@ -2360,7 +2360,7 @@ export async function activate(
 
 
                 // Find word index based on range position
-                const wordIndex = words.findIndex((word, index) => {
+                const wordIndex = words.findIndex((word, _index) => {
                     const startPos = line.text.indexOf(word);
                     const endPos = startPos + word.length;
                     return wordRange.start.character >= startPos && wordRange.end.character <= endPos;
@@ -2491,7 +2491,7 @@ export async function activate(
                 }
 
                 // Find index based on word range position, not cursor position
-                const wordIndex = words.findIndex((word, index) => {
+                const wordIndex = words.findIndex((word, _index) => {
                     const startPos = line.text.indexOf(word);
                     const endPos = startPos + word.length;
                     return wordRange.start.character >= startPos && wordRange.end.character <= endPos;
@@ -2596,7 +2596,7 @@ export async function activate(
         console.log(`Tokens: [${values.join(', ')}]`);
 
         const mapped: ParsedVariable[] = [];
-        
+
         // Line 2: RSTFLE PESTMODE
         if (indexline === 0) {
             if (values.length >= 1) {
@@ -3512,18 +3512,18 @@ export async function activate(
                 const intValue = parseInt(value);
                 const isInt = !isNaN(intValue) && Number.isInteger(Number(value));
                 console.log(`  Integer validation result: ${isInt}`);
-                if (!isInt) return false;
-                if (minValue !== undefined && intValue < minValue) return false;
-                if (maxValue !== undefined && intValue > maxValue) return false;
+                if (!isInt) { return false; }
+                if (minValue !== undefined && intValue < minValue) { return false; }
+                if (maxValue !== undefined && intValue > maxValue) { return false; }
                 return true;
 
             case 'float':
                 const floatValue = parseFloat(value);
                 const isFloat = !isNaN(floatValue) && Number.isFinite(Number(value));
                 console.log(`  Float validation result: ${isFloat}`);
-                if (!isFloat) return false;
-                if (minValue !== undefined && floatValue < minValue) return false;
-                if (maxValue !== undefined && floatValue > maxValue) return false;
+                if (!isFloat) { return false; }
+                if (minValue !== undefined && floatValue < minValue) { return false; }
+                if (maxValue !== undefined && floatValue > maxValue) { return false; }
                 return true;
 
             case 'string':
@@ -4453,11 +4453,11 @@ export async function activate(
     // #endregion Regularisation Section Hover Provider
 
     // #region Control Data Hover Provider
-
+/* 
     async function generatePestIndex(document: vscode.TextDocument): Promise<void> {
         console.log("=== Starting PEST Index Generation ===");
         console.log(`Processing file: ${document.fileName}`);
-        
+
         const text = document.getText();
         const lines = text.split(/\r?\n/);
         console.log(`Total lines to process: ${lines.length}`);
@@ -4474,15 +4474,15 @@ export async function activate(
         if (controlSection) {
             console.log(`Procesando la sección de datos de control (líneas ${controlSection.start}-${controlSection.end})`);
             indexContent += "# Control Data\n\n";
-            
+
             for (let i = controlSection.start; i <= controlSection.end; i++) {
                 const line = lines[i].trim();
-                if (!line || line.startsWith('*')) continue;
+                if (!line || line.startsWith('*')) { continue; }
 
                 const values = line.split(/\s+/);
                 const lineIndex = i - controlSection.start - 1;
                 const parsedVariables = parseLineByIndex(lineIndex, line, values, []);
-                
+
                 if (parsedVariables && parsedVariables.length > 0) {
                     console.log(`Processing control line ${lineIndex + 1}, found ${parsedVariables.length} variables`);
                     indexContent += `## Line ${lineIndex + 1}\n`;
@@ -4500,15 +4500,15 @@ export async function activate(
         if (svdSection) {
             console.log(`Processing SVD section (lines ${svdSection.start}-${svdSection.end})`);
             indexContent += "# SVD\n\n";
-            
+
             for (let i = svdSection.start; i <= svdSection.end; i++) {
                 const line = lines[i].trim();
-                if (!line || line.startsWith('*')) continue;
+                if (!line || line.startsWith('*')) { continue; }
 
                 const values = line.split(/\s+/);
                 const lineIndex = i - svdSection.start - 1;
                 const parsedVariables: SVDParsedVariable[] = parseLineByIndexSVD(lineIndex, values, []);
-                
+
                 if (parsedVariables && parsedVariables.length > 0) {
                     console.log(`Processing SVD line ${lineIndex + 1}, found ${parsedVariables.length} variables`);
                     indexContent += `## Line ${lineIndex + 1}\n`;
@@ -4528,15 +4528,15 @@ export async function activate(
         if (regulSection) {
             console.log(`Processing Regularization section (lines ${regulSection.start}-${regulSection.end})`);
             indexContent += "# Regularization\n\n";
-            
+
             for (let i = regulSection.start; i <= regulSection.end; i++) {
                 const line = lines[i].trim();
-                if (!line || line.startsWith('*')) continue;
+                if (!line || line.startsWith('*')) { continue; }
 
                 const values = line.split(/\s+/);
                 const lineIndex = i - regulSection.start - 1;
                 const parsedVariables = parseLineByIndexRegul(lineIndex, values, regularizationDataStructure[lineIndex] || []);
-                
+
                 if (parsedVariables && parsedVariables.length > 0) {
                     console.log(`Processing regularization line ${lineIndex + 1}, found ${parsedVariables.length} variables`);
                     indexContent += `## Line ${lineIndex + 1}\n`;
@@ -4590,7 +4590,7 @@ export async function activate(
         console.log(`=== PEST Index Generation Complete ===`);
         console.log(`- Total variables processed: ${variablesProcessed}`);
         console.log(`- Index file saved to: ${indexPath}`);
-        
+
         // Show information message to user
         vscode.window.showInformationMessage(`PEST Index updated with ${variablesProcessed} variables`);
     }
@@ -4628,7 +4628,7 @@ export async function activate(
                 }, 1000); // Wait 1 second after last change
             }
         })
-    );
+    ); */
 }
 // #endregion MAIN EXTENSION ACTIVATION FUNCTION
 

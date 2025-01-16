@@ -1,18 +1,19 @@
 # Change Log
 
 ### 0.1.2
-- **New Feature: Variable Hover Information**:
-  - Added hover information for variables in `.pst` files, providing detailed descriptions, types, and allowed values.
-  - Enhanced user experience by displaying warnings for invalid variable values directly in the hover tooltip.
-  - Included console logs to track hover creation and variable validation processes.
 
-- **Improved Type Validation**:
-  - Enhanced type validation logic for integer, float, and string types.
-  - Added support for validating string values against allowed values.
-  - Included detailed console logs to provide insights into the type validation process.
+- **New Feature: Robust Parser for PEST Files**:
+  - Developed a robust parser to handle `.pst` files, efficiently processing control data, SVD, and regularization sections.
+  - Enhanced user experience by providing detailed logs and error handling during the parsing process.
+  - Included console logs to track parsing progress and identify potential issues.
+
+- **Improved Section Detection**:
+  - Enhanced logic to detect and process different sections within `.pst` files.
+  - Added support for handling control data, SVD, and regularization sections separately.
+  - Included detailed console logs to provide insights into the section detection process.
 
 - **Bug Fixes and Performance Improvements**:
-  - Fixed issues related to variable parsing and hover information display.
+  - Fixed issues related to section parsing and index generation.
   - Optimized the extension's performance for faster execution and smoother user experience.
 
 ### 0.1.1
