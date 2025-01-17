@@ -1,5 +1,10 @@
 # Change Log
 
+### 0.1.3
+
+- **Allowed Values from Descriptions**:
+  - Allowed values for parameters are now also extracted from their descriptions for better accuracy. The more the better. 
+
 ### 0.1.2
 
 - **New Feature: Robust Parser for PEST Files**:

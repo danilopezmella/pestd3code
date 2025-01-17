@@ -1523,7 +1523,7 @@ export async function activate(
             return createUndefinedVariableHover();
         }
 
-        const varStructure = structure.find((v: { name: string; type: string; description?: string; required: boolean; allowedValues?: string[], minValue?: number, maxValue?: number }) => v.name === variable.name);
+        const varStructure = structure.find((v: { name: string; type: string; description?: string; required: boolean; allowedValues?: string[], minValue?: number, maxValue?: number, values?: string }) => v.name === variable.name);
         if (!varStructure) {
             console.log('No structure found for variable');
             return null;
@@ -1543,16 +1543,19 @@ export async function activate(
             `### ⚖️ Regularisation Variable: **${varStructure.name}**\n\n` +
             `📝 **Description:** ${varStructure.description || "No description available"}\n\n` +
             `📋 **Type:** \`${varStructure.type}\`\n\n` +
-            (varStructure.allowedValues
-                ? `🎯 **Allowed Values:** ${varStructure.allowedValues.map((v: any) => `\`${v}\``).join(", ")}\n\n`
-                : "") +
+            (varStructure.allowedValues && varStructure.allowedValues.length > 0
+            ? `🎯 **Allowed Values:** ${varStructure.allowedValues.map((v: any) => `\`${v}\``).join(", ")}\n\n`
+            : (varStructure.values
+                ? `🎯 **Allowed Values:** ${varStructure.values.split(", ").map((v: any) => `\`${v}\``).join(", ")}\n\n`
+                : "")
+            ) +
             `❗ **Required:** ${varStructure.required ? "Yes" : "No"}\n\n` +
             (varStructure.minValue !== undefined
-                ? `⬇️ **Minimum Value:** ${varStructure.minValue}\n\n`
-                : "") +
+            ? `⬇️ **Minimum Value:** ${varStructure.minValue}\n\n`
+            : "") +
             (varStructure.maxValue !== undefined
-                ? `⬆️ **Maximum Value:** ${varStructure.maxValue}\n\n`
-                : "")
+            ? `⬆️ **Maximum Value:** ${varStructure.maxValue}\n\n`
+            : "")
         );
 
         if (!variable.valid || !isValid) {
@@ -1716,29 +1719,29 @@ export async function activate(
                 if (relativeLine === 0) {
                     // Primera línea: PHIMLIM PHIMACCEPT [FRACPHIM] [MEMSAVE]
                     lineStructure = [
-                        { name: "PHIMLIM", type: "float", required: true, minValue: 0 },
-                        { name: "PHIMACCEPT", type: "float", required: true, minValue: 0 },
-                        { name: "FRACPHIM", type: "float", required: false, minValue: 0 },
-                        { name: "MEMSAVE", type: "string", required: false, allowedValues: ["memsave", "nomemsave"] }
+                        { name: "PHIMLIM", type: "float", required: true, minValue: 0, values: descriptions.find(desc => desc.Variable === "PHIMLIM")?.Values || "No description available" },
+                        { name: "PHIMACCEPT", type: "float", required: true, minValue: 0, values: descriptions.find(desc => desc.Variable === "PHIMACCEPT")?.Values || "No description available" },
+                        { name: "FRACPHIM", type: "float", required: false, minValue: 0, values: descriptions.find(desc => desc.Variable === "FRACPHIM")?.Values || "No description available" },
+                        { name: "MEMSAVE", type: "string", required: false, allowedValues: ["memsave", "nomemsave"], values: descriptions.find(desc => desc.Variable === "MEMSAVE")?.Values || "No description available" }
                     ];
                 } else if (relativeLine === 1) {
                     // Segunda línea: WFINIT WFMIN WFMAX [LINREG] [REGCONTINUE]
                     lineStructure = [
-                        { name: "WFINIT", type: "float", required: true, minValue: 0 },
-                        { name: "WFMIN", type: "float", required: true, minValue: 0 },
-                        { name: "WFMAX", type: "float", required: true, minValue: 0 },
-                        { name: "LINREG", type: "string", required: false, allowedValues: ["linreg", "nonlinreg"] },
-                        { name: "REGCONTINUE", type: "string", required: false, allowedValues: ["continue", "nocontinue"] }
+                        { name: "WFINIT", type: "float", required: true, minValue: 0, values: descriptions.find(desc => desc.Variable === "WFINIT")?.Values || "No description available" },
+                        { name: "WFMIN", type: "float", required: true, minValue: 0, values: descriptions.find(desc => desc.Variable === "WFMIN")?.Values || "No description available" },
+                        { name: "WFMAX", type: "float", required: true, minValue: 0, values: descriptions.find(desc => desc.Variable === "WFMAX")?.Values || "No description available" },
+                        { name: "LINREG", type: "string", required: false, allowedValues: ["linreg", "nonlinreg"], values: descriptions.find(desc => desc.Variable === "LINREG")?.Values || "No description available" },
+                        { name: "REGCONTINUE", type: "string", required: false, allowedValues: ["continue", "nocontinue"], values: descriptions.find(desc => desc.Variable === "REGCONTINUE")?.Values || "No description available" }
                     ];
                 } else if (relativeLine === 2) {
                     // Tercera línea: WFFAC WFTOL IREGADJ [NOPTREGADJ REGWEIGHTRAT [REGSINGTHRESH]]
                     lineStructure = [
-                        { name: "WFFAC", type: "float", required: true, minValue: 0 },
-                        { name: "WFTOL", type: "float", required: true, minValue: 0 },
-                        { name: "IREGADJ", type: "integer", required: true },
-                        { name: "NOPTREGADJ", type: "integer", required: false },
-                        { name: "REGWEIGHTRAT", type: "float", required: false },
-                        { name: "REGSINGTHRESH", type: "float", required: false }
+                        { name: "WFFAC", type: "float", required: true, minValue: 0, values: descriptions.find(desc => desc.Variable === "WFFAC")?.Values || "No description available" },
+                        { name: "WFTOL", type: "float", required: true, minValue: 0, values: descriptions.find(desc => desc.Variable === "WFTOL")?.Values || "No description available" },
+                        { name: "IREGADJ", type: "integer", required: true, values: descriptions.find(desc => desc.Variable === "IREGADJ")?.Values || "No description available" },
+                        { name: "NOPTREGADJ", type: "integer", required: false, values: descriptions.find(desc => desc.Variable === "NOPTREGADJ")?.Values || "No description available" },
+                        { name: "REGWEIGHTRAT", type: "float", required: false, values: descriptions.find(desc => desc.Variable === "REGWEIGHTRAT")?.Values || "No description available" },
+                        { name: "REGSINGTHRESH", type: "float", required: false, values: descriptions.find(desc => desc.Variable === "REGSINGTHRESH")?.Values || "No description available" }
                     ];
                 }
 
@@ -1846,7 +1849,8 @@ export async function activate(
                             type: "string",
                             order: 1,
                             allowedValues: ["restart", "norestart"],
-                            description: descriptions.find(desc => desc.Variable === "RSTFLE")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "RSTFLE")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "RSTFLE")?.Values || "No description available"
                         },
                         {
                             name: "PESTMODE",
@@ -1854,7 +1858,8 @@ export async function activate(
                             type: "string",
                             order: 2,
                             allowedValues: ["estimation", "prediction", "regularization", "regularisation", "pareto"],
-                            description: descriptions.find(desc => desc.Variable === "PESTMODE")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "PESTMODE")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "PESTMODE")?.Values || "No description available"
                         }
                     ];
                 } else if (relativeLine === 1) {
@@ -1865,7 +1870,8 @@ export async function activate(
                             type: "integer",
                             order: 1,
                             min: 1, // greater than zero
-                            description: descriptions.find(desc => desc.Variable === "NPAR")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "NPAR")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "NPAR")?.Values || "No description available"
                         },
                         {
                             name: "NOBS",
@@ -1873,7 +1879,8 @@ export async function activate(
                             type: "integer",
                             order: 2,
                             min: 1, // greater than zero
-                            description: descriptions.find(desc => desc.Variable === "NOBS")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "NOBS")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "NOBS")?.Values || "No description available"
                         },
                         {
                             name: "NPARGP",
@@ -1881,14 +1888,16 @@ export async function activate(
                             type: "integer",
                             order: 3,
                             min: 1, // greater than zero
-                            description: descriptions.find(desc => desc.Variable === "NPARGP")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "NPARGP")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "NPARGP")?.Values || "No description available"
                         },
                         {
                             name: "NPRIOR",
                             required: true,
                             type: "integer",
                             order: 4,
-                            description: descriptions.find(desc => desc.Variable === "NPRIOR")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "NPRIOR")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "NPRIOR")?.Values || "No description available"
                         },
                         {
                             name: "NOBSGP",
@@ -1896,20 +1905,23 @@ export async function activate(
                             type: "integer",
                             order: 5,
                             min: 1, // greater than zero
-                            description: descriptions.find(desc => desc.Variable === "NOBSGP")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "NOBSGP")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "NOBSGP")?.Values || "No description available"
                         },
                         {
                             name: "MAXCOMPDIM",
                             required: false,
                             type: "integer",
                             min: 0, // zero or greater
-                            description: descriptions.find(desc => desc.Variable === "MAXCOMPDIM")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "MAXCOMPDIM")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "MAXCOMPDIM")?.Values || "No description available"
                         },
                         {
                             name: "DERZEROLIM",
                             required: false,
                             type: "float",
-                            description: descriptions.find(desc => desc.Variable === "DERZEROLIM")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "DERZEROLIM")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "DERZEROLIM")?.Values || "No description available"
                         }
                     ];
                 } else if (relativeLine === 2) {
@@ -1922,7 +1934,8 @@ export async function activate(
                             type: "integer",
                             order: 1,
                             min: 1, // greater than zero
-                            description: descriptions.find(desc => desc.Variable === "NTPLFLE")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "NTPLFLE")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "NTPLFLE")?.Values || "No description available"
                         },
                         {
                             name: "NINSFLE",
@@ -1930,7 +1943,8 @@ export async function activate(
                             type: "integer",
                             order: 2,
                             min: 1, // greater than zero
-                            description: descriptions.find(desc => desc.Variable === "NINSFLE")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "NINSFLE")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "NINSFLE")?.Values || "No description available"
                         },
                         {
                             name: "PRECIS",
@@ -1938,7 +1952,8 @@ export async function activate(
                             type: "string",
                             order: 3,
                             allowedValues: ["single", "double"],
-                            description: descriptions.find(desc => desc.Variable === "PRECIS")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "PRECIS")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "PRECIS")?.Values || "No description available"
                         },
                         {
                             name: "DPOINT",
@@ -1946,14 +1961,16 @@ export async function activate(
                             type: "string",
                             order: 4,
                             allowedValues: ["point", "nopoint"],
-                            description: descriptions.find(desc => desc.Variable === "DPOINT")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "DPOINT")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "DPOINT")?.Values || "No description available"
                         },
                         {
                             name: "NUMCOM",
                             required: false,
                             type: "integer",
                             min: 1, // greater than zero
-                            description: descriptions.find(desc => desc.Variable === "NUMCOM")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "NUMCOM")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "NUMCOM")?.Values || "No description available"
                         },
                         {
                             name: "JACFILE",
@@ -1962,7 +1979,8 @@ export async function activate(
                             min: -1,
                             max: 1,
                             allowedValues: ["-1", "0", "1"], // 0, 1 or -1
-                            description: descriptions.find(desc => desc.Variable === "JACFILE")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "JACFILE")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "JACFILE")?.Values || "No description available"
                         },
                         {
                             name: "MESSFILE",
@@ -1971,7 +1989,8 @@ export async function activate(
                             min: 0,
                             max: 1,
                             allowedValues: ["0", "1"], // zero or one
-                            description: descriptions.find(desc => desc.Variable === "MESSFILE")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "MESSFILE")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "MESSFILE")?.Values || "No description available"
                         },
                         // Optional variables - string
                         {
@@ -1979,7 +1998,8 @@ export async function activate(
                             required: false,
                             type: "string",
                             allowedValues: ["obsreref", "obsreref_N", "noobsreref"],
-                            description: descriptions.find(desc => desc.Variable === "OBSREREF")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "OBSREREF")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "OBSREREF")?.Values || "No description available"
                         }
                     ];
                 } else if (relativeLine === 3) {
@@ -1992,14 +2012,16 @@ export async function activate(
                             type: "float",
                             order: 1,
                             min: 0, // zero or greater
-                            description: descriptions.find(desc => desc.Variable === "RLAMBDA1")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "RLAMBDA1")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "RLAMBDA1")?.Values || "No description available"
                         },
                         {
                             name: "RLAMFAC",
                             required: true,
                             type: "float",
                             order: 2,
-                            description: descriptions.find(desc => desc.Variable === "RLAMFAC")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "RLAMFAC")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "RLAMFAC")?.Values || "No description available"
                         },
                         {
                             name: "PHIRATSUF",
@@ -2008,7 +2030,8 @@ export async function activate(
                             order: 3,
                             min: 0,
                             max: 1, // between zero and one
-                            description: descriptions.find(desc => desc.Variable === "PHIRATSUF")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "PHIRATSUF")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "PHIRATSUF")?.Values || "No description available"
                         },
                         {
                             name: "PHIREDLAM",
@@ -2017,7 +2040,8 @@ export async function activate(
                             order: 4,
                             min: 0,
                             max: 1, // between zero and one
-                            description: descriptions.find(desc => desc.Variable === "PHIREDLAM")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "PHIREDLAM")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "PHIREDLAM")?.Values || "No description available"
                         },
                         {
                             name: "NUMLAM",
@@ -2025,28 +2049,32 @@ export async function activate(
                             type: "integer",
                             order: 5,
                             min: 1, // one or greater
-                            description: descriptions.find(desc => desc.Variable === "NUMLAM")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "NUMLAM")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "NUMLAM")?.Values || "No description available"
                         },
                         {
                             name: "JACUPDATE",
                             required: false,
                             type: "integer",
                             min: 0, // zero or greater
-                            description: descriptions.find(desc => desc.Variable === "JACUPDATE")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "JACUPDATE")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "JACUPDATE")?.Values || "No description available"
                         },
                         {
                             name: "LAMFORGIVE",
                             required: false,
                             type: "string",
                             allowedValues: ["lamforgive", "nolamforgive"],
-                            description: descriptions.find(desc => desc.Variable === "LAMFORGIVE")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "LAMFORGIVE")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "LAMFORGIVE")?.Values || "No description available"
                         },
                         {
                             name: "DERFORGIVE",
                             required: false,
                             type: "string",
                             allowedValues: ["derforgive", "noderforgive"],
-                            description: descriptions.find(desc => desc.Variable === "DERFORGIVE")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "DERFORGIVE")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "DERFORGIVE")?.Values || "No description available"
                         }
                     ];
                 } else if (relativeLine === 4) {
@@ -2059,7 +2087,8 @@ export async function activate(
                             type: "float",
                             order: 1,
                             min: 0, // greater than zero
-                            description: descriptions.find(desc => desc.Variable === "RELPARMAX")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "RELPARMAX")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "RELPARMAX")?.Values || "No description available"
                         },
                         {
                             name: "FACPARMAX",
@@ -2067,7 +2096,8 @@ export async function activate(
                             type: "float",
                             order: 2,
                             min: 1, // greater than one
-                            description: descriptions.find(desc => desc.Variable === "FACPARMAX")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "FACPARMAX")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "FACPARMAX")?.Values || "No description available"
                         },
                         {
                             name: "FACORIG",
@@ -2076,14 +2106,16 @@ export async function activate(
                             order: 3,
                             min: 0,
                             max: 1, // between zero and one
-                            description: descriptions.find(desc => desc.Variable === "FACORIG")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "FACORIG")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "FACORIG")?.Values || "No description available"
                         },
                         {
                             name: "IBOUNDSTICK",
                             required: false,
                             type: "integer",
                             min: 0, // zero or greater
-                            description: descriptions.find(desc => desc.Variable === "IBOUNDSTICK")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "IBOUNDSTICK")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "IBOUNDSTICK")?.Values || "No description available"
                         },
                         {
                             name: "UPVECBEND",
@@ -2092,13 +2124,15 @@ export async function activate(
                             min: 0,
                             max: 1, // zero or one
                             allowedValues: ["0", "1"],
-                            description: descriptions.find(desc => desc.Variable === "UPVECBEND")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "UPVECBEND")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "UPVECBEND")?.Values || "No description available"
                         },
                         {
                             name: "ABSPARMAX",
                             required: false,
                             type: "float",
-                            description: descriptions.find(desc => desc.Variable === "ABSPARMAX")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "ABSPARMAX")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "ABSPARMAX")?.Values || "No description available"
                         }
                     ];
                 } else if (relativeLine === 5) {
@@ -2112,7 +2146,8 @@ export async function activate(
                             order: 1,
                             min: 0,
                             max: 1, // between zero and one
-                            description: descriptions.find(desc => desc.Variable === "PHIREDSWH")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "PHIREDSWH")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "PHIREDSWH")?.Values || "No description available"
                         },
                         // Process optional variables
                         {
@@ -2120,35 +2155,40 @@ export async function activate(
                             required: false,
                             type: "integer",
                             min: 1, // one or greater
-                            description: descriptions.find(desc => desc.Variable === "NOPTSWITCH")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "NOPTSWITCH")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "NOPTSWITCH")?.Values || "No description available"
                         },
                         {
                             name: "SPLITSWH",
                             required: false,
                             type: "float",
                             min: 0, // zero or greater
-                            description: descriptions.find(desc => desc.Variable === "SPLITSWH")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "SPLITSWH")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "SPLITSWH")?.Values || "No description available"
                         },
                         {
                             name: "DOAUI",
                             required: false,
                             type: "string",
                             allowedValues: ["aui", "auid", "noaui"],
-                            description: descriptions.find(desc => desc.Variable === "DOAUI")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "DOAUI")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "DOAUI")?.Values || "No description available"
                         },
                         {
                             name: "DOSENREUSE",
                             required: false,
                             type: "string",
                             allowedValues: ["senreuse", "nosenreuse"],
-                            description: descriptions.find(desc => desc.Variable === "DOSENREUSE")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "DOSENREUSE")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "DOSENREUSE")?.Values || "No description available"
                         },
                         {
                             name: "BOUNDSCALE",
                             required: false,
                             type: "string",
                             allowedValues: ["boundscale", "noboundscale"],
-                            description: descriptions.find(desc => desc.Variable === "BOUNDSCALE")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "BOUNDSCALE")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "BOUNDSCALE")?.Values || "No description available"
                         }
                     ];
                 } else if (relativeLine === 6) {
@@ -2158,10 +2198,11 @@ export async function activate(
                         {
                             name: "NOPTMAX",
                             required: true,
+                            values: descriptions.find(desc => desc.Variable === "NOPTMAX")?.Values || "No description available",
                             type: "integer",
                             order: 1,
                             min: -2, // -2 or greater
-                            description: descriptions.find(desc => desc.Variable === "NOPTMAX")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "NOPTMAX")?.Description || "No description available",
                         },
                         {
                             name: "PHIREDSTP",
@@ -2169,7 +2210,8 @@ export async function activate(
                             type: "float",
                             order: 2,
                             min: 0, // greater than zero
-                            description: descriptions.find(desc => desc.Variable === "PHIREDSTP")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "PHIREDSTP")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "PHIREDSTP")?.Values || "No description available"
                         },
                         {
                             name: "NPHISTP",
@@ -2177,7 +2219,8 @@ export async function activate(
                             type: "integer",
                             order: 3,
                             min: 1, // greater than zero
-                            description: descriptions.find(desc => desc.Variable === "NPHISTP")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "NPHISTP")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "NPHISTP")?.Values || "No description available"
                         },
                         {
                             name: "NPHINORED",
@@ -2185,7 +2228,8 @@ export async function activate(
                             type: "integer",
                             order: 4,
                             min: 1, // greater than zero
-                            description: descriptions.find(desc => desc.Variable === "NPHINORED")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "NPHINORED")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "NPHINORED")?.Values || "No description available"
                         },
                         {
                             name: "RELPARSTP",
@@ -2193,7 +2237,8 @@ export async function activate(
                             type: "float",
                             order: 5,
                             min: 0, // greater than zero
-                            description: descriptions.find(desc => desc.Variable === "RELPARSTP")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "RELPARSTP")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "RELPARSTP")?.Values || "No description available"
                         },
                         {
                             name: "NRELPAR",
@@ -2201,14 +2246,16 @@ export async function activate(
                             type: "integer",
                             order: 6,
                             min: 1, // greater than zero
-                            description: descriptions.find(desc => desc.Variable === "NRELPAR")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "NRELPAR")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "NRELPAR")?.Values || "No description available"
                         },
                         {
                             name: "PHISTOPTHRESH",
                             required: false,
                             type: "float",
                             min: 0, // zero or greater
-                            description: descriptions.find(desc => desc.Variable === "PHISTOPTHRESH")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "PHISTOPTHRESH")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "PHISTOPTHRESH")?.Values || "No description available"
                         },
                         {
                             name: "LASTRUN",
@@ -2217,14 +2264,16 @@ export async function activate(
                             min: 0,
                             max: 1, // zero or one
                             allowedValues: ["0", "1"],
-                            description: descriptions.find(desc => desc.Variable === "LASTRUN")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "LASTRUN")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "LASTRUN")?.Values || "No description available"
                         },
                         {
                             name: "PHIABANDON",
                             required: false,
                             type: "float",
                             min: 0, // a positive number
-                            description: descriptions.find(desc => desc.Variable === "PHIABANDON")?.Description || "No description available"
+                            description: descriptions.find(desc => desc.Variable === "PHIABANDON")?.Description || "No description available",
+                            values: descriptions.find(desc => desc.Variable === "PHIABANDON")?.Values || "No description available"
                         }
                     ];
                 } else if (relativeLine === 7) {
@@ -2238,7 +2287,8 @@ export async function activate(
                             min: 0,
                             max: 1,
                             allowedValues: ["0", "1"],
-                            description: descriptions.find(desc => desc.Variable === "ICOV")?.Description || "Record covariance matrix in matrix file"
+                            description: descriptions.find(desc => desc.Variable === "ICOV")?.Description || "Record covariance matrix in matrix file",
+                            values: descriptions.find(desc => desc.Variable === "ICOV")?.Values || "No description available"
                         },
                         {
                             name: "ICOR",
@@ -2248,7 +2298,8 @@ export async function activate(
                             min: 0,
                             max: 1,
                             allowedValues: ["0", "1"],
-                            description: descriptions.find(desc => desc.Variable === "ICOR")?.Description || "Record correlation coefficient matrix in matrix file"
+                            description: descriptions.find(desc => desc.Variable === "ICOR")?.Description || "Record correlation coefficient matrix in matrix file",
+                            values: descriptions.find(desc => desc.Variable === "ICOR")?.Values || "No description available"
                         },
                         {
                             name: "IEIG",
@@ -2258,7 +2309,8 @@ export async function activate(
                             min: 0,
                             max: 1,
                             allowedValues: ["0", "1"],
-                            description: descriptions.find(desc => desc.Variable === "IEIG")?.Description || "Record eigenvectors in matrix file"
+                            description: descriptions.find(desc => desc.Variable === "IEIG")?.Description || "Record eigenvectors in matrix file",
+                            values: descriptions.find(desc => desc.Variable === "IEIG")?.Values || "No description available"
                         },
                         {
                             name: "IRES",
@@ -2267,49 +2319,56 @@ export async function activate(
                             min: 0,
                             max: 1,
                             allowedValues: ["0", "1"],
-                            description: descriptions.find(desc => desc.Variable === "IRES")?.Description || "Record resolution data"
+                            description: descriptions.find(desc => desc.Variable === "IRES")?.Description || "Record resolution data",
+                            values: descriptions.find(desc => desc.Variable === "IRES")?.Values || "No description available"
                         },
                         {
                             name: "JCOSAVE",
                             required: false,
                             type: "string",
                             allowedValues: ["jcosave", "nojcosave"],
-                            description: descriptions.find(desc => desc.Variable === "JCOSAVE")?.Description || "Save best Jacobian file"
+                            description: descriptions.find(desc => desc.Variable === "JCOSAVE")?.Description || "Save best Jacobian file",
+                            values: descriptions.find(desc => desc.Variable === "JCOSAVE")?.Values || "No description available"
                         },
                         {
                             name: "VERBOSEREC",
                             required: false,
                             type: "string",
                             allowedValues: ["verboserec", "noverboserec"],
-                            description: descriptions.find(desc => desc.Variable === "VERBOSEREC")?.Description || "Verbose record settings"
+                            description: descriptions.find(desc => desc.Variable === "VERBOSEREC")?.Description || "Verbose record settings",
+                            values: descriptions.find(desc => desc.Variable === "VERBOSEREC")?.Values || "No description available"
                         },
                         {
                             name: "JCOSAVEITN",
                             required: false,
                             type: "string",
                             allowedValues: ["jcosaveitn", "nojcosaveitn"],
-                            description: descriptions.find(desc => desc.Variable === "JCOSAVEITN")?.Description || "Save iteration-specific Jacobian files"
+                            description: descriptions.find(desc => desc.Variable === "JCOSAVEITN")?.Description || "Save iteration-specific Jacobian files",
+                            values: descriptions.find(desc => desc.Variable === "JCOSAVEITN")?.Values || "No description available"
                         },
                         {
                             name: "REISAVEITN",
                             required: false,
                             type: "string",
                             allowedValues: ["reisaveitn", "noreisaveitn"],
-                            description: descriptions.find(desc => desc.Variable === "REISAVEITN")?.Description || "Save iteration-specific residual files"
+                            description: descriptions.find(desc => desc.Variable === "REISAVEITN")?.Description || "Save iteration-specific residual files",
+                            values: descriptions.find(desc => desc.Variable === "REISAVEITN")?.Values || "No description available"
                         },
                         {
                             name: "PARSAVEITN",
                             required: false,
                             type: "string",
                             allowedValues: ["parsaveitn", "noparsaveitn"],
-                            description: descriptions.find(desc => desc.Variable === "PARSAVEITN")?.Description || "Save iteration-specific parameter files"
+                            description: descriptions.find(desc => desc.Variable === "PARSAVEITN")?.Description || "Save iteration-specific parameter files",
+                            values: descriptions.find(desc => desc.Variable === "PARSAVEITN")?.Values || "No description available"
                         },
                         {
                             name: "PARSAVERUN",
                             required: false,
                             type: "string",
                             allowedValues: ["parsaverun", "noparsaverun"],
-                            description: descriptions.find(desc => desc.Variable === "PARSAVERUN")?.Description || "Save run-specific parameter files"
+                            description: descriptions.find(desc => desc.Variable === "PARSAVERUN")?.Description || "Save run-specific parameter files",
+                            values: descriptions.find(desc => desc.Variable === "PARSAVERUN")?.Values || "No description available"
                         }
                     ];
                 }
@@ -2425,7 +2484,8 @@ export async function activate(
                             type: "string",
                             order: 1,
                             allowedValues: ["0", "1"],
-                            description: descriptions.find(desc => desc.Variable === "SVDMODE")?.Description || "Determines the type of SVD analysis to be performed"
+                            description: descriptions.find(desc => desc.Variable === "SVDMODE")?.Description || "Determines the type of SVD analysis to be performed",
+                            values: descriptions.find(desc => desc.Variable === "SVDMODE")?.Values || "No description available"
                         }
                     ];
                 } else if (relativeLine === 1) {
@@ -2437,7 +2497,8 @@ export async function activate(
                             type: "integer",
                             order: 1,
                             description: descriptions.find(desc => desc.Variable === "MAXSING")?.Description || "Maximum number of singular values to include in solution",
-                            minValue: 1
+                            minValue: 1,
+                            values: descriptions.find(desc => desc.Variable === "MAXSING")?.Values || "No description available"
                         },
                         {
                             name: "EIGTHRESH",
@@ -2446,7 +2507,8 @@ export async function activate(
                             order: 2,
                             description: descriptions.find(desc => desc.Variable === "EIGTHRESH")?.Description || "Eigenvalue ratio threshold for truncation",
                             minValue: 0,
-                            maxValue: 1
+                            maxValue: 1,
+                            values: descriptions.find(desc => desc.Variable === "EIGTHRESH")?.Values || "No description available"
                         }
                     ];
                 } else if (relativeLine === 2) {
@@ -2458,7 +2520,8 @@ export async function activate(
                             type: "integer",
                             order: 1,
                             allowedValues: ["0", "1", "2"],
-                            description: descriptions.find(desc => desc.Variable === "EIGWRITE")?.Description || "Level of eigenanalysis reporting:\n0: Limited reporting\n1: Standard reporting\n2: Detailed reporting"
+                            description: descriptions.find(desc => desc.Variable === "EIGWRITE")?.Description || "Level of eigenanalysis reporting:\n0: Limited reporting\n1: Standard reporting\n2: Detailed reporting",
+                            values: descriptions.find(desc => desc.Variable === "EIGWRITE")?.Values || "No description available"
                         }
                     ];
                 }
@@ -2526,8 +2589,10 @@ export async function activate(
                 hoverContent.appendMarkdown(`📋 **Type:** \`${variable.type}\`\n\n`);
                 hoverContent.appendMarkdown(`❗ **Required:** ${variable.required ? "Yes" : "No"}\n\n`);
 
-                if (variable.allowedValues) {
-                    hoverContent.appendMarkdown(`🎯 **Allowed Values:** ${variable.allowedValues.join(", ")}\n\n`);
+                if (variable.allowedValues && variable.allowedValues.length > 0) {
+                    hoverContent.appendMarkdown(`🎯 **Allowed Values:** ${variable.allowedValues.map((v: any) => `\`${v}\``).join(", ")}\n\n`);
+                } else if (variable.values) {
+                    hoverContent.appendMarkdown(`🎯 **Allowed Values:** ${variable.values.split(", ").map((v: any) => `\`${v}\``).join(", ")}\n\n`);
                 }
 
                 if (variable.minValue !== undefined) {
@@ -3451,7 +3516,7 @@ export async function activate(
         console.log('\n=== Creating Hover Content ===');
         console.log(`Variable: ${variable.name}, Value="${variable.value}", Valid=${variable.valid}`);
 
-        const varStructure = structure.find((v: { name: string; type: string; description?: string; required: boolean; allowedValues?: string[], min?: number, max?: number }) => v.name === variable.name);
+        const varStructure = structure.find((v: { name: string; type: string; description?: string; required: boolean; allowedValues?: string[], min?: number, max?: number, values?: string }) => v.name === variable.name);
         if (!varStructure) {
             console.log('No structure found for variable');
             return null;
@@ -3471,16 +3536,19 @@ export async function activate(
             `### 🔧 Control Data Variable: **${varStructure.name}**\n\n` +
             `📝 **Description:** ${varStructure.description || "No description available"}\n\n` +
             `📋 **Type:** \`${varStructure.type}\`\n\n` +
-            (varStructure.allowedValues
-                ? `🎯 **Allowed Values:** ${varStructure.allowedValues.map((v: any) => `\`${v}\``).join(", ")}\n\n`
-                : "") +
+            (varStructure.allowedValues && varStructure.allowedValues.length > 0
+            ? `🎯 **Allowed Values:** ${varStructure.allowedValues.map((v: any) => `\`${v}\``).join(", ")}\n\n`
+            : (varStructure.values
+                ? `🎯 **Allowed Values:** ${varStructure.values.split(", ").map((v: any) => `\`${v}\``).join(", ")}\n\n`
+                : "")
+            ) +
             `❗ **Required:** ${varStructure.required ? "Yes" : "No"}\n\n` +
             (varStructure.min !== undefined
-                ? `⬇️ **Minimum Value:** ${varStructure.min}\n\n`
-                : "") +
+            ? `⬇️ **Minimum Value:** ${varStructure.min}\n\n`
+            : "") +
             (varStructure.max !== undefined
-                ? `⬆️ **Maximum Value:** ${varStructure.max}\n\n`
-                : "")
+            ? `⬆️ **Maximum Value:** ${varStructure.max}\n\n`
+            : "")
         );
 
         // Mostrar warning para variables inválidas (requeridas u opcionales)
