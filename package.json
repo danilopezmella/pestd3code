@@ -52,18 +52,6 @@
         "title": "Activate PestD3code"
       },
       {
-        "command": "pestd3code.simulateUpdate",
-        "title": "PestD3Code: Simulate Update"
-      },
-      {
-        "command": "pestd3code.simulateFirstInstall",
-        "title": "PestD3Code: Simulate First Install"
-      },
-      {
-        "command": "pestd3code.simulateOldVersion",
-        "title": "PestD3Code: Simulate Old Version"
-      },
-      {
         "command": "extension.openManual",
         "title": "Open PEST++ Manual"
       },
