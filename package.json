@@ -4,7 +4,7 @@
   "description": "Enhance readability and usability of PEST control files for MODFLOW with structured decorators, hover support, and interactive features.",
   "publisher": "DanielLopezMella",
   "icon": "images/icon.png",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "engines": {
     "vscode": "^1.84.0"
   },
@@ -50,6 +50,18 @@
       {
         "command": "pestd3code.activate",
         "title": "Activate PestD3code"
+      },
+      {
+        "command": "pestd3code.simulateUpdate",
+        "title": "PestD3Code: Simulate Update"
+      },
+      {
+        "command": "pestd3code.simulateFirstInstall",
+        "title": "PestD3Code: Simulate First Install"
+      },
+      {
+        "command": "pestd3code.simulateOldVersion",
+        "title": "PestD3Code: Simulate Old Version"
       },
       {
         "command": "extension.openManual",

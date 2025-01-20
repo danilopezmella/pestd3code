@@ -1,5 +1,23 @@
 # Change Log
 
+### 0.1.4
+- **First Time Auto Set PestCheck**:
+  - Added a feature to offer auto-setting the PestCheck path the first time the extension is installed. This helps users quickly configure the necessary path without manual intervention.
+  - Improved user experience by providing clear and detailed messages during the initial setup process.
+
+- **Update Notification**:
+  - Added a notification message to inform users when the extension has been updated. This ensures users are aware of the latest features and improvements.
+  - Recommended users to use the auto-update feature to always have the latest version of the extension.
+
+- **Improved Executable Messages on macOS**:
+  - Enhanced the messages related to executable files on macOS (darwin). The messages now provide clearer instructions and guidance for setting execution permissions.
+  - Included detailed console logs to track the process of granting execution permissions and handling potential issues.
+
+### Known Issues
+- **PestCheck Parsing Differences**:
+  - There are known issues where PestCheck might parse files differently compared to PestD3code. This is an ongoing area of work, and improvements are being made to align the parsing logic between PestCheck and PestD3code.
+  - **Users may experience discrepancies in parsing results, so please report any inconsistencies to help me improve the extension.** For inquiries, feedback, or support, please message me on LinkedIn: [www.linkedin.com/in/dlz800](https://www.linkedin.com/in/dlz800).
+
 ### 0.1.3
 
 - **Allowed Values from Descriptions**:

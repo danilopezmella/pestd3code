@@ -433,7 +433,7 @@ async function findPestCheck(): Promise<string | null> {
     // 1. Try finding PestCheck using platform-specific commands
     const pathFromCommand = await findPestCheckUsingCommand(platform);
     if (pathFromCommand) {
-        vscode.window.showInformationMessage(`PestCheck found using command: ${pathFromCommand}`);
+        vscode.window.showInformationMessage(`✅ PestCheck found using command: ${pathFromCommand}`);
         console.log("Found via command:", pathFromCommand);
         return pathFromCommand;
     }
@@ -447,7 +447,7 @@ async function findPestCheck(): Promise<string | null> {
             if (exists) {
                 console.log(`PestCheck found at: ${commonPath}`);
                 const userChoice = await vscode.window.showInformationMessage(
-                    `PestCheck executable found at: ${commonPath}. Do you want to use this path?`,
+                    `PestCheck found at: ${commonPath}. Do you want to use this path?`,
                     "Yes",
                     "No"
                 );
@@ -461,7 +461,7 @@ async function findPestCheck(): Promise<string | null> {
     }
 
     // 3. Not found, offer configuration options
-    const warningMessage = "PestCheck executable not found using any method. Please configure it manually.";
+    const warningMessage = "PestCheck not found using any method. Please configure it manually.";
     const userChoice = await vscode.window.showWarningMessage(
         warningMessage,
         "Auto Set PestCheck Path",
@@ -551,7 +551,7 @@ async function autoSetPestCheckPath(): Promise<void> {
         vscode.window.showInformationMessage(`PestCheck path automatically set to: ${path}`);
     } else if (!path) {
         const userChoice = await vscode.window.showWarningMessage(
-            "PestCheck executable not found. Would you like to set it manually?",
+            "PestCheck not found. Would you like to set it manually?",
             "Browse",
             "Skip"
         );
@@ -559,7 +559,7 @@ async function autoSetPestCheckPath(): Promise<void> {
             await browseForPestCheckPath();
         }
     } else {
-        vscode.window.showErrorMessage(`The detected path is not executable: ${path}`);
+        vscode.window.showErrorMessage(`The detected file needs execution permissions: ${path}`);
     }
 }
 
@@ -579,12 +579,13 @@ async function browseForPestCheckPath() {
         canSelectFolders: false,
         canSelectMany: false,
         filters,
-        openLabel: "Select PestCheck Executable",
+        openLabel: "Select PestCheck",
     });
 
     if (selectedFile && selectedFile[0]) {
         const pestcheckPath = selectedFile[0].fsPath;
         console.log("User selected PestCheck path:", pestcheckPath);
+
 
         // Cross-platform validation for file executability
         try {
@@ -592,7 +593,7 @@ async function browseForPestCheckPath() {
         } catch {
             if (platform !== "win32") {
                 const makeExecutable = await vscode.window.showWarningMessage(
-                    "The selected file is not executable. Would you like to make it executable?",
+                    "The selected file needs execution permissions. Would you like to grant them?",
                     "Yes",
                     "No"
                 );
@@ -608,16 +609,16 @@ async function browseForPestCheckPath() {
                                 }
                             });
                         });
-                        console.log("Made file executable:", pestcheckPath);
+                        console.log("Granted execution permissions to:", pestcheckPath);
                     } catch (error) {
-                        console.error("Error making file executable:", error);
+                        console.error("Error granting execution permissions:", error);
                         vscode.window.showErrorMessage(
-                            "Failed to make file executable. Please set permissions manually."
+                            "Failed to grant execution permissions. Please set permissions manually."
                         );
                         return;
                     }
                 } else {
-                    console.warn("User declined to make the file executable.");
+                    console.warn("User declined to grant execution permissions.");
                     return;
                 }
             } else {
@@ -714,10 +715,61 @@ MAIN EXTENSION ACTIVATION FUNCTION
 
 // #region MAIN EXTENSION ACTIVATION FUNCTION
 
-export async function activate(
+export async function activate(context: vscode.ExtensionContext): Promise<void> {
+    // Check for extension updates
+    const extensionVersion = vscode.extensions.getExtension("DanielLopezMella.pestd3code")?.packageJSON.version;
+    const lastVersion = context.globalState.get<string>("lastVersion");
 
-    context: vscode.ExtensionContext
-): Promise<void> {
+    // 1. Notificación de nueva versión
+    if (extensionVersion !== lastVersion) {
+        const message = new vscode.MarkdownString(
+            `🎉 PestD3Code has been updated to version ${extensionVersion}! ` +
+            `[View Changelog](https://github.com/danilopezmella/pestd3code/blob/main/CHANGELOG.md)`
+        );
+
+        vscode.window.showInformationMessage(message.value, "View Changelog").then(selection => {
+            if (selection === "View Changelog") {
+                vscode.env.openExternal(vscode.Uri.parse("https://github.com/danilopezmella/pestd3code/blob/main/CHANGELOG.md"));
+            }
+        });
+
+        await context.globalState.update("lastVersion", extensionVersion);
+    }
+
+    // 2. Verificación independiente de auto-update
+    const extensionAutoUpdate = vscode.workspace.getConfiguration('extensions').get('autoUpdate');
+    const hasAutoUpdateBeenSuggested = context.globalState.get<boolean>("hasAutoUpdateBeenSuggested", false);
+
+    if (!extensionAutoUpdate && !hasAutoUpdateBeenSuggested) {
+        vscode.window.showInformationMessage(
+            "💡 Enable auto-updates to always get the latest features and improvements in PestD3Code",
+            "Enable Auto-Updates",
+            "Maybe Later"
+        ).then(selection => {
+            if (selection === "Enable Auto-Updates") {
+                vscode.commands.executeCommand('workbench.action.openSettings', 'extensions.autoUpdate');
+            }
+        });
+
+        await context.globalState.update("hasAutoUpdateBeenSuggested", true);
+    }
+
+    // Add new command registration
+    context.subscriptions.push(
+        vscode.commands.registerCommand("pestd3code.simulateFirstInstall", async () => {
+            console.log("Simulating first install - resetting PestCheck configuration...");
+
+            // Reset the global notification state
+            await context.globalState.update("pestCheckNotified", false);
+
+            // Reset the PestCheck path in configuration
+            const configuration = vscode.workspace.getConfiguration("pestd3code");
+            await configuration.update("pestcheckPath", "", vscode.ConfigurationTarget.Global);
+
+            vscode.window.showInformationMessage("PestD3Code has been reset to first install state");
+            console.log("PestD3Code reset completed");
+        })
+    );
 
     // Reset counter when a .pst file is closed
     context.subscriptions.push(
@@ -765,7 +817,7 @@ export async function activate(
             if (!pestCheckPath || !fs.existsSync(pestCheckPath)) {
                 console.log("PestCheck path not configured or invalid, prompting user...");
                 const choice = await vscode.window.showWarningMessage(
-                    "PestCheck executable not found. Would you like to locate it?",
+                    "PestCheck not found. Would you like to locate it?",
                     "Auto Detect",
                     "Browse",
                     "Cancel"
@@ -1115,7 +1167,7 @@ export async function activate(
             canSelectFolders: false,
             canSelectMany: false,
             filters,
-            openLabel: "Select PestCheck Executable",
+            openLabel: "Select PestCheck File",
         });
 
         if (selectedFile && selectedFile[0]) {
@@ -1123,12 +1175,13 @@ export async function activate(
             console.log("User selected PestCheck path:", pestcheckPath);
 
             // Validate executability on Unix-based platforms
+            // Validate executability on Unix-based platforms
             if (platform !== "win32") {
                 try {
                     await fs.promises.access(pestcheckPath, fs.constants.X_OK); // Check if the file is executable
                 } catch {
                     const makeExecutable = await vscode.window.showWarningMessage(
-                        "The selected file is not executable. Would you like to make it executable?",
+                        "The selected file needs execution permissions. Would you like to grant them?",
                         "Yes",
                         "No"
                     );
@@ -1143,17 +1196,17 @@ export async function activate(
                                     }
                                 });
                             });
-                            console.log("Made file executable:", pestcheckPath);
+                            console.log("Granted execution permissions to:", pestcheckPath);
                         } catch (error) {
-                            console.error("Error making file executable:", error);
+                            console.error("Error granting execution permissions:", error);
                             vscode.window.showErrorMessage(
-                                "Failed to make file executable. Please set permissions manually."
+                                "Failed to grant execution permissions. Please set permissions manually."
                             );
                             return;
                         }
                     } else {
                         vscode.window.showErrorMessage(
-                            "The selected file is not executable and cannot be used."
+                            "The selected file cannot be used without execution permissions."
                         );
                         return;
                     }
@@ -1189,7 +1242,7 @@ export async function activate(
             if (!pestCheckPath) {
                 vscode.window
                     .showWarningMessage(
-                        "PestCheck executable not found. Would you like to set it manually?",
+                        "PestCheck not found. Would you like to set it manually?",
                         "Browse"
                     )
                     .then((selection) => {
@@ -1237,15 +1290,33 @@ export async function activate(
 
     async function notifyPestCheckNotFound(context: vscode.ExtensionContext) {
         const selected = await vscode.window.showWarningMessage(
-            "PestCheck executable not found. Configure it now?",
+            "PestCheck not found. Would you like to locate it?",
+            "Try to Auto Detect",
             "Browse",
-            "Skip"
+            "Cancel"
         );
 
-        if (selected === "Browse") {
-            await browseForPestCheckPath(context);
-        } else {
-            console.log("User chose to skip PestCheck configuration.");
+        switch (selected) {
+            case "Try to Auto Detect":
+                console.log("Attempting automatic detection...");
+                const foundPath = await findPestCheck();
+                if (foundPath) {
+                    const configuration = vscode.workspace.getConfiguration("pestd3code");
+                    await configuration.update("pestcheckPath", foundPath, vscode.ConfigurationTarget.Global);
+                    console.log("PestCheck found at:", foundPath);
+                }
+                break;
+
+            case "Browse":
+                await browseForPestCheckPath(context);
+                if (!pestcheckPath) {
+                    vscode.window.showInformationMessage("PestCheck path is still not configured. You can try again using the 'Set Pestcheck Path Manually' or 'Try to autoset Pestcheck' commands.");
+                }
+                break;
+
+            default:
+                vscode.window.showInformationMessage("User cancelled PestCheck configuration. You can try again using the 'Set Pestcheck Path Manually' or 'Try to autoset Pestcheck' commands.");
+                break;
         }
     }
 
@@ -1544,18 +1615,18 @@ export async function activate(
             `📝 **Description:** ${varStructure.description || "No description available"}\n\n` +
             `📋 **Type:** \`${varStructure.type}\`\n\n` +
             (varStructure.allowedValues && varStructure.allowedValues.length > 0
-            ? `🎯 **Allowed Values:** ${varStructure.allowedValues.map((v: any) => `\`${v}\``).join(", ")}\n\n`
-            : (varStructure.values
-                ? `🎯 **Allowed Values:** ${varStructure.values.split(", ").map((v: any) => `\`${v}\``).join(", ")}\n\n`
-                : "")
+                ? `🎯 **Allowed Values:** ${varStructure.allowedValues.map((v: any) => `\`${v}\``).join(", ")}\n\n`
+                : (varStructure.values
+                    ? `🎯 **Allowed Values:** ${varStructure.values.split(", ").map((v: any) => `\`${v}\``).join(", ")}\n\n`
+                    : "")
             ) +
             `❗ **Required:** ${varStructure.required ? "Yes" : "No"}\n\n` +
             (varStructure.minValue !== undefined
-            ? `⬇️ **Minimum Value:** ${varStructure.minValue}\n\n`
-            : "") +
+                ? `⬇️ **Minimum Value:** ${varStructure.minValue}\n\n`
+                : "") +
             (varStructure.maxValue !== undefined
-            ? `⬆️ **Maximum Value:** ${varStructure.maxValue}\n\n`
-            : "")
+                ? `⬆️ **Maximum Value:** ${varStructure.maxValue}\n\n`
+                : "")
         );
 
         if (!variable.valid || !isValid) {
@@ -3537,18 +3608,18 @@ export async function activate(
             `📝 **Description:** ${varStructure.description || "No description available"}\n\n` +
             `📋 **Type:** \`${varStructure.type}\`\n\n` +
             (varStructure.allowedValues && varStructure.allowedValues.length > 0
-            ? `🎯 **Allowed Values:** ${varStructure.allowedValues.map((v: any) => `\`${v}\``).join(", ")}\n\n`
-            : (varStructure.values
-                ? `🎯 **Allowed Values:** ${varStructure.values.split(", ").map((v: any) => `\`${v}\``).join(", ")}\n\n`
-                : "")
+                ? `🎯 **Allowed Values:** ${varStructure.allowedValues.map((v: any) => `\`${v}\``).join(", ")}\n\n`
+                : (varStructure.values
+                    ? `🎯 **Allowed Values:** ${varStructure.values.split(", ").map((v: any) => `\`${v}\``).join(", ")}\n\n`
+                    : "")
             ) +
             `❗ **Required:** ${varStructure.required ? "Yes" : "No"}\n\n` +
             (varStructure.min !== undefined
-            ? `⬇️ **Minimum Value:** ${varStructure.min}\n\n`
-            : "") +
+                ? `⬇️ **Minimum Value:** ${varStructure.min}\n\n`
+                : "") +
             (varStructure.max !== undefined
-            ? `⬆️ **Maximum Value:** ${varStructure.max}\n\n`
-            : "")
+                ? `⬆️ **Maximum Value:** ${varStructure.max}\n\n`
+                : "")
         );
 
         // Mostrar warning para variables inválidas (requeridas u opcionales)
@@ -4521,182 +4592,211 @@ export async function activate(
     // #endregion Regularisation Section Hover Provider
 
     // #region Control Data Hover Provider
-/* 
-    async function generatePestIndex(document: vscode.TextDocument): Promise<void> {
-        console.log("=== Starting PEST Index Generation ===");
-        console.log(`Processing file: ${document.fileName}`);
-
-        const text = document.getText();
-        const lines = text.split(/\r?\n/);
-        console.log(`Total lines to process: ${lines.length}`);
-
-        // Detect all sections first
-        const sections = detectSections(lines);
-        console.log("Detected sections:", sections.map(s => s.parent));
-
-        let indexContent = "";
-        let variablesProcessed = 0;
-
-        // Procesar la sección de datos de control
-        const controlSection = sections.find(s => s.parent.toLowerCase() === 'control data');
-        if (controlSection) {
-            console.log(`Procesando la sección de datos de control (líneas ${controlSection.start}-${controlSection.end})`);
-            indexContent += "# Control Data\n\n";
-
-            for (let i = controlSection.start; i <= controlSection.end; i++) {
-                const line = lines[i].trim();
-                if (!line || line.startsWith('*')) { continue; }
-
-                const values = line.split(/\s+/);
-                const lineIndex = i - controlSection.start - 1;
-                const parsedVariables = parseLineByIndex(lineIndex, line, values, []);
-
-                if (parsedVariables && parsedVariables.length > 0) {
-                    console.log(`Processing control line ${lineIndex + 1}, found ${parsedVariables.length} variables`);
-                    indexContent += `## Line ${lineIndex + 1}\n`;
-                    parsedVariables.forEach(variable => {
-                        if (variable.value !== "UNDEFINED" && variable.value !== "MISSING") {
-                            indexContent += `${variable.name} = ${variable.value}\n`;
-                            variablesProcessed++;
-                        }
-                    });
-                    indexContent += "\n";
+    /* 
+        async function generatePestIndex(document: vscode.TextDocument): Promise<void> {
+            console.log("=== Starting PEST Index Generation ===");
+            console.log(`Processing file: ${document.fileName}`);
+    
+            const text = document.getText();
+            const lines = text.split(/\r?\n/);
+            console.log(`Total lines to process: ${lines.length}`);
+    
+            // Detect all sections first
+            const sections = detectSections(lines);
+            console.log("Detected sections:", sections.map(s => s.parent));
+    
+            let indexContent = "";
+            let variablesProcessed = 0;
+    
+            // Procesar la sección de datos de control
+            const controlSection = sections.find(s => s.parent.toLowerCase() === 'control data');
+            if (controlSection) {
+                console.log(`Procesando la sección de datos de control (líneas ${controlSection.start}-${controlSection.end})`);
+                indexContent += "# Control Data\n\n";
+    
+                for (let i = controlSection.start; i <= controlSection.end; i++) {
+                    const line = lines[i].trim();
+                    if (!line || line.startsWith('*')) { continue; }
+    
+                    const values = line.split(/\s+/);
+                    const lineIndex = i - controlSection.start - 1;
+                    const parsedVariables = parseLineByIndex(lineIndex, line, values, []);
+    
+                    if (parsedVariables && parsedVariables.length > 0) {
+                        console.log(`Processing control line ${lineIndex + 1}, found ${parsedVariables.length} variables`);
+                        indexContent += `## Line ${lineIndex + 1}\n`;
+                        parsedVariables.forEach(variable => {
+                            if (variable.value !== "UNDEFINED" && variable.value !== "MISSING") {
+                                indexContent += `${variable.name} = ${variable.value}\n`;
+                                variablesProcessed++;
+                            }
+                        });
+                        indexContent += "\n";
+                    }
                 }
             }
-        }
-        const svdSection = sections.find(s => s.parent.toLowerCase() === 'singular value decomposition');
-        if (svdSection) {
-            console.log(`Processing SVD section (lines ${svdSection.start}-${svdSection.end})`);
-            indexContent += "# SVD\n\n";
-
-            for (let i = svdSection.start; i <= svdSection.end; i++) {
-                const line = lines[i].trim();
-                if (!line || line.startsWith('*')) { continue; }
-
-                const values = line.split(/\s+/);
-                const lineIndex = i - svdSection.start - 1;
-                const parsedVariables: SVDParsedVariable[] = parseLineByIndexSVD(lineIndex, values, []);
-
-                if (parsedVariables && parsedVariables.length > 0) {
-                    console.log(`Processing SVD line ${lineIndex + 1}, found ${parsedVariables.length} variables`);
-                    indexContent += `## Line ${lineIndex + 1}\n`;
-                    parsedVariables.forEach(variable => {
-                        if (variable.value && variable.value !== "UNDEFINED" && variable.value !== "MISSING") {
-                            indexContent += `${variable.name} = ${variable.value}\n`;
-                            variablesProcessed++;
-                        }
-                    });
-                    indexContent += "\n";
+            const svdSection = sections.find(s => s.parent.toLowerCase() === 'singular value decomposition');
+            if (svdSection) {
+                console.log(`Processing SVD section (lines ${svdSection.start}-${svdSection.end})`);
+                indexContent += "# SVD\n\n";
+    
+                for (let i = svdSection.start; i <= svdSection.end; i++) {
+                    const line = lines[i].trim();
+                    if (!line || line.startsWith('*')) { continue; }
+    
+                    const values = line.split(/\s+/);
+                    const lineIndex = i - svdSection.start - 1;
+                    const parsedVariables: SVDParsedVariable[] = parseLineByIndexSVD(lineIndex, values, []);
+    
+                    if (parsedVariables && parsedVariables.length > 0) {
+                        console.log(`Processing SVD line ${lineIndex + 1}, found ${parsedVariables.length} variables`);
+                        indexContent += `## Line ${lineIndex + 1}\n`;
+                        parsedVariables.forEach(variable => {
+                            if (variable.value && variable.value !== "UNDEFINED" && variable.value !== "MISSING") {
+                                indexContent += `${variable.name} = ${variable.value}\n`;
+                                variablesProcessed++;
+                            }
+                        });
+                        indexContent += "\n";
+                    }
                 }
             }
-        }
-
-        // Process Regularization section
-        const regulSection = sections.find(s => s.parent.toLowerCase() === 'regularization');
-        if (regulSection) {
-            console.log(`Processing Regularization section (lines ${regulSection.start}-${regulSection.end})`);
-            indexContent += "# Regularization\n\n";
-
-            for (let i = regulSection.start; i <= regulSection.end; i++) {
-                const line = lines[i].trim();
-                if (!line || line.startsWith('*')) { continue; }
-
-                const values = line.split(/\s+/);
-                const lineIndex = i - regulSection.start - 1;
-                const parsedVariables = parseLineByIndexRegul(lineIndex, values, regularizationDataStructure[lineIndex] || []);
-
-                if (parsedVariables && parsedVariables.length > 0) {
-                    console.log(`Processing regularization line ${lineIndex + 1}, found ${parsedVariables.length} variables`);
-                    indexContent += `## Line ${lineIndex + 1}\n`;
-                    parsedVariables.forEach(variable => {
-                        if (variable.value && variable.value !== "UNDEFINED" && variable.value !== "MISSING") {
-                            indexContent += `${variable.name} = ${variable.value}\n`;
-                            variablesProcessed++;
-                        }
-                    });
-                    indexContent += "\n";
+    
+            // Process Regularization section
+            const regulSection = sections.find(s => s.parent.toLowerCase() === 'regularization');
+            if (regulSection) {
+                console.log(`Processing Regularization section (lines ${regulSection.start}-${regulSection.end})`);
+                indexContent += "# Regularization\n\n";
+    
+                for (let i = regulSection.start; i <= regulSection.end; i++) {
+                    const line = lines[i].trim();
+                    if (!line || line.startsWith('*')) { continue; }
+    
+                    const values = line.split(/\s+/);
+                    const lineIndex = i - regulSection.start - 1;
+                    const parsedVariables = parseLineByIndexRegul(lineIndex, values, regularizationDataStructure[lineIndex] || []);
+    
+                    if (parsedVariables && parsedVariables.length > 0) {
+                        console.log(`Processing regularization line ${lineIndex + 1}, found ${parsedVariables.length} variables`);
+                        indexContent += `## Line ${lineIndex + 1}\n`;
+                        parsedVariables.forEach(variable => {
+                            if (variable.value && variable.value !== "UNDEFINED" && variable.value !== "MISSING") {
+                                indexContent += `${variable.name} = ${variable.value}\n`;
+                                variablesProcessed++;
+                            }
+                        });
+                        indexContent += "\n";
+                    }
                 }
             }
-        }
-
-        // Write to pestindex.md
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-        if (!workspaceFolder) {
-            console.error("No workspace folder found");
-            return;
-        }
-
-        let indexPath = path.join(workspaceFolder.uri.fsPath, 'pestindex.md');
-        const headerIdentifier = "# Generated by pestd3code";
-
-        // Determine the new index path based on the open .pst file
-        const pstFileName = path.basename(document.fileName, '.pst');
-        indexPath = path.join(workspaceFolder.uri.fsPath, `${pstFileName}.md`);
-
-        // Check if the file exists
-        if (fs.existsSync(indexPath)) {
-            const existingContent = await fs.promises.readFile(indexPath, 'utf8');
-            if (!existingContent.startsWith(headerIdentifier)) {
-                // File exists but was not created by pestd3code
-                const newIndexPath = path.join(workspaceFolder.uri.fsPath, `${pstFileName}_pestd3code.md`);
-                const userResponse = await vscode.window.showWarningMessage(
-                    `The file '${pstFileName}.md' already exists and was not created by pestd3code. Do you want to rename the new file to '${pstFileName}_pestd3code.md'?`,
-                    'Yes', 'No'
-                );
-                if (userResponse === 'Yes') {
-                    indexPath = newIndexPath;
-                } else {
-                    console.log("User chose not to rename the file. Exiting the process.");
-                    return;
+    
+            // Write to pestindex.md
+            const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+            if (!workspaceFolder) {
+                console.error("No workspace folder found");
+                return;
+            }
+    
+            let indexPath = path.join(workspaceFolder.uri.fsPath, 'pestindex.md');
+            const headerIdentifier = "# Generated by pestd3code";
+    
+            // Determine the new index path based on the open .pst file
+            const pstFileName = path.basename(document.fileName, '.pst');
+            indexPath = path.join(workspaceFolder.uri.fsPath, `${pstFileName}.md`);
+    
+            // Check if the file exists
+            if (fs.existsSync(indexPath)) {
+                const existingContent = await fs.promises.readFile(indexPath, 'utf8');
+                if (!existingContent.startsWith(headerIdentifier)) {
+                    // File exists but was not created by pestd3code
+                    const newIndexPath = path.join(workspaceFolder.uri.fsPath, `${pstFileName}_pestd3code.md`);
+                    const userResponse = await vscode.window.showWarningMessage(
+                        `The file '${pstFileName}.md' already exists and was not created by pestd3code. Do you want to rename the new file to '${pstFileName}_pestd3code.md'?`,
+                        'Yes', 'No'
+                    );
+                    if (userResponse === 'Yes') {
+                        indexPath = newIndexPath;
+                    } else {
+                        console.log("User chose not to rename the file. Exiting the process.");
+                        return;
+                    }
                 }
             }
+    
+            // Add header to the content
+            indexContent = `${headerIdentifier}\n\n${indexContent}`;
+            await fs.promises.writeFile(indexPath, indexContent, 'utf8');
+            console.log(`=== PEST Index Generation Complete ===`);
+            console.log(`- Total variables processed: ${variablesProcessed}`);
+            console.log(`- Index file saved to: ${indexPath}`);
+    
+            // Show information message to user
+            vscode.window.showInformationMessage(`PEST Index updated with ${variablesProcessed} variables`);
         }
+    
+        // Event listener for when a PST file is opened
+        context.subscriptions.push(
+            vscode.workspace.onDidOpenTextDocument(async (document) => {
+                if (document.fileName.endsWith('.pst')) {
+                    await generatePestIndex(document);
+                }
+            })
+        );
+    
+        // Event listener for when a PST file is saved
+        context.subscriptions.push(
+            vscode.workspace.onDidSaveTextDocument(async (document) => {
+                if (document.fileName.endsWith('.pst')) {
+                    await generatePestIndex(document);
+                }
+            })
+        );
+    
+        // Event listener for when a PST file is modified
+        let timeout: NodeJS.Timeout | undefined = undefined;
+        context.subscriptions.push(
+            vscode.workspace.onDidChangeTextDocument(async (event) => {
+                if (event.document.fileName.endsWith('.pst')) {
+                    // Clear previous timeout
+                    if (timeout) {
+                        clearTimeout(timeout);
+                    }
+                    // Set new timeout to avoid too frequent updates
+                    timeout = setTimeout(async () => {
+                        await generatePestIndex(event.document);
+                    }, 1000); // Wait 1 second after last change
+                }
+            })
+        ); */
 
-        // Add header to the content
-        indexContent = `${headerIdentifier}\n\n${indexContent}`;
-        await fs.promises.writeFile(indexPath, indexContent, 'utf8');
-        console.log(`=== PEST Index Generation Complete ===`);
-        console.log(`- Total variables processed: ${variablesProcessed}`);
-        console.log(`- Index file saved to: ${indexPath}`);
-
-        // Show information message to user
-        vscode.window.showInformationMessage(`PEST Index updated with ${variablesProcessed} variables`);
-    }
-
-    // Event listener for when a PST file is opened
+    // Add new command registration
     context.subscriptions.push(
-        vscode.workspace.onDidOpenTextDocument(async (document) => {
-            if (document.fileName.endsWith('.pst')) {
-                await generatePestIndex(document);
-            }
+        vscode.commands.registerCommand("pestd3code.simulateUpdate", async () => {
+            console.log("Simulating extension update...");
+
+            // Reset the last version to trigger update message
+            await context.globalState.update("lastVersion", "0.0.0");
+
+            // Reload window to trigger activation event
+            await vscode.commands.executeCommand("workbench.action.reloadWindow");
         })
     );
 
-    // Event listener for when a PST file is saved
+    // Add new command registration
     context.subscriptions.push(
-        vscode.workspace.onDidSaveTextDocument(async (document) => {
-            if (document.fileName.endsWith('.pst')) {
-                await generatePestIndex(document);
-            }
+        vscode.commands.registerCommand("pestd3code.simulateOldVersion", async () => {
+            console.log("Simulating old version...");
+
+            // Set last version to an old version number
+            await context.globalState.update("lastVersion", "0.0.1");
+
+            // Reset auto-update suggestion state to test that flow too
+            await context.globalState.update("hasAutoUpdateBeenSuggested", false);
+
+            vscode.window.showInformationMessage("PestD3Code version state has been reset to 0.0.1");
+            console.log("Version simulation completed");
         })
     );
-
-    // Event listener for when a PST file is modified
-    let timeout: NodeJS.Timeout | undefined = undefined;
-    context.subscriptions.push(
-        vscode.workspace.onDidChangeTextDocument(async (event) => {
-            if (event.document.fileName.endsWith('.pst')) {
-                // Clear previous timeout
-                if (timeout) {
-                    clearTimeout(timeout);
-                }
-                // Set new timeout to avoid too frequent updates
-                timeout = setTimeout(async () => {
-                    await generatePestIndex(event.document);
-                }, 1000); // Wait 1 second after last change
-            }
-        })
-    ); */
 }
 // #endregion MAIN EXTENSION ACTIVATION FUNCTION
 
