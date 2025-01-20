@@ -818,20 +818,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 console.log("PestCheck path not configured or invalid, prompting user...");
                 const choice = await vscode.window.showWarningMessage(
                     "PestCheck not found. Would you like to locate it?",
-                    "Auto Detect",
+                    "Try to Auto Detect",
                     "Browse",
                     "Cancel"
                 );
                 switch (choice) {
-                    case "Auto Detect":
+                    case "Try to Auto Detect":
                         console.log("Attempting automatic detection...");
                         const foundPath = await findPestCheck();
                         if (foundPath) {
                             pestCheckPath = foundPath;
                             await configuration.update("pestcheckPath", foundPath, vscode.ConfigurationTarget.Global);
-                            console.log("PestCheck found at:", pestCheckPath);
+                            console.log("PestCheck found at:", foundPath);
                         } else {
-                            console.log("Automatic detection failed");
+                            vscode.window.showInformationMessage("PestCheck path is still not configured. You can try again using the 'Set Pestcheck Path Manually' or 'Try to autoset Pestcheck' commands.");
                             return;
                         }
                         break;
@@ -841,13 +841,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                         // Re-check configuration after browse
                         pestCheckPath = configuration.get<string>("pestcheckPath", "");
                         if (!pestCheckPath || !fs.existsSync(pestCheckPath)) {
-                            console.log("No valid path selected during browse");
+                            vscode.window.showInformationMessage("PestCheck path is still not configured. You can try again using the 'Set Pestcheck Path Manually' or 'Try to autoset Pestcheck' commands.");
                             return;
                         }
                         break;
 
                     default:
-                        console.log("User cancelled PestCheck configuration");
+                        vscode.window.showInformationMessage("User cancelled PestCheck configuration. You can try again using the 'Set Pestcheck Path Manually' or 'Try to autoset Pestcheck' commands.");
                         return;
                 }
             }
