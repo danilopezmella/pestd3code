@@ -1,5 +1,9 @@
 # Change Log
 
+### 0.1.5
+- **Fixed Hover for Regularization and Regularisation**:
+  - Corrected the hover functionality for both spellings of Regularization to ensure consistent behavior.
+
 ### 0.1.4
 - **First Time Auto Set PestCheck**:
   - Added a feature to offer auto-setting the PestCheck path the first time the extension is installed. This helps users quickly configure the necessary path without manual intervention.
