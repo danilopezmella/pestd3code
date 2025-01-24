@@ -1732,7 +1732,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim().toLowerCase();
-            if (line === "* control data" || line === "* regularisation" || line === "* regularization" || line === "* singular value decomposition") {
+            if (line === "* control data" || line.includes("regularisation") || line.includes("regularization") || line === "* singular value decomposition") {
                 // Si hay una sección previa, su fin es la línea actual
                 if (currentSection) {
                     currentSection.end = i - 1;
@@ -1768,8 +1768,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 console.log('Current section:', currentSection ? currentSection.parent : 'None');
                 console.log('Current line:', position.line);
 
-                if (!currentSection || (currentSection.parent.toLowerCase() !== "* regularisation" && currentSection.parent.toLowerCase() !== "regularization")) {
-                    console.log("Not in regularisation section");
+                if (!currentSection || 
+                    (currentSection.parent.toLowerCase() !== "* regularisation" && 
+                     currentSection.parent.toLowerCase() !== "* regularization")) {
+                    console.log("Not in regularisation or regularization section");
                     return null;
                 }
 
