@@ -1788,36 +1788,138 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 }
 
                 // Seleccionar la estructura correcta según la línea
-                let lineStructure;
-                if (relativeLine === 0) {
-                    // Primera línea: PHIMLIM PHIMACCEPT [FRACPHIM] [MEMSAVE]
-                    lineStructure = [
-                        { name: "PHIMLIM", type: "float", required: true, minValue: 0, values: descriptions.find(desc => desc.Variable === "PHIMLIM")?.Values || "No description available" },
-                        { name: "PHIMACCEPT", type: "float", required: true, minValue: 0, values: descriptions.find(desc => desc.Variable === "PHIMACCEPT")?.Values || "No description available" },
-                        { name: "FRACPHIM", type: "float", required: false, minValue: 0, values: descriptions.find(desc => desc.Variable === "FRACPHIM")?.Values || "No description available" },
-                        { name: "MEMSAVE", type: "string", required: false, allowedValues: ["memsave", "nomemsave"], values: descriptions.find(desc => desc.Variable === "MEMSAVE")?.Values || "No description available" }
-                    ];
-                } else if (relativeLine === 1) {
-                    // Segunda línea: WFINIT WFMIN WFMAX [LINREG] [REGCONTINUE]
-                    lineStructure = [
-                        { name: "WFINIT", type: "float", required: true, minValue: 0, values: descriptions.find(desc => desc.Variable === "WFINIT")?.Values || "No description available" },
-                        { name: "WFMIN", type: "float", required: true, minValue: 0, values: descriptions.find(desc => desc.Variable === "WFMIN")?.Values || "No description available" },
-                        { name: "WFMAX", type: "float", required: true, minValue: 0, values: descriptions.find(desc => desc.Variable === "WFMAX")?.Values || "No description available" },
-                        { name: "LINREG", type: "string", required: false, allowedValues: ["linreg", "nonlinreg"], values: descriptions.find(desc => desc.Variable === "LINREG")?.Values || "No description available" },
-                        { name: "REGCONTINUE", type: "string", required: false, allowedValues: ["continue", "nocontinue"], values: descriptions.find(desc => desc.Variable === "REGCONTINUE")?.Values || "No description available" }
-                    ];
-                } else if (relativeLine === 2) {
-                    // Tercera línea: WFFAC WFTOL IREGADJ [NOPTREGADJ REGWEIGHTRAT [REGSINGTHRESH]]
-                    lineStructure = [
-                        { name: "WFFAC", type: "float", required: true, minValue: 0, values: descriptions.find(desc => desc.Variable === "WFFAC")?.Values || "No description available" },
-                        { name: "WFTOL", type: "float", required: true, minValue: 0, values: descriptions.find(desc => desc.Variable === "WFTOL")?.Values || "No description available" },
-                        { name: "IREGADJ", type: "integer", required: true, values: descriptions.find(desc => desc.Variable === "IREGADJ")?.Values || "No description available" },
-                        { name: "NOPTREGADJ", type: "integer", required: false, values: descriptions.find(desc => desc.Variable === "NOPTREGADJ")?.Values || "No description available" },
-                        { name: "REGWEIGHTRAT", type: "float", required: false, values: descriptions.find(desc => desc.Variable === "REGWEIGHTRAT")?.Values || "No description available" },
-                        { name: "REGSINGTHRESH", type: "float", required: false, values: descriptions.find(desc => desc.Variable === "REGSINGTHRESH")?.Values || "No description available" }
-                    ];
-                }
-
+                // Seleccionar la estructura correcta según la línea
+let lineStructure;
+if (relativeLine === 0) {
+    // Primera línea: PHIMLIM PHIMACCEPT [FRACPHIM] [MEMSAVE]
+    lineStructure = [
+        { 
+            name: "PHIMLIM", 
+            type: "float", 
+            required: true, 
+            minValue: 0, 
+            values: descriptions.find(desc => desc.Variable === "PHIMLIM")?.Values || "No description available",
+            description: descriptions.find(desc => desc.Variable === "PHIMLIM")?.Description || "No description available"
+        },
+        { 
+            name: "PHIMACCEPT", 
+            type: "float", 
+            required: true, 
+            minValue: 0, 
+            values: descriptions.find(desc => desc.Variable === "PHIMACCEPT")?.Values || "No description available",
+            description: descriptions.find(desc => desc.Variable === "PHIMACCEPT")?.Description || "No description available"
+        },
+        { 
+            name: "FRACPHIM", 
+            type: "float", 
+            required: false, 
+            minValue: 0, 
+            values: descriptions.find(desc => desc.Variable === "FRACPHIM")?.Values || "No description available",
+            description: descriptions.find(desc => desc.Variable === "FRACPHIM")?.Description || "No description available"
+        },
+        { 
+            name: "MEMSAVE", 
+            type: "string", 
+            required: false, 
+            allowedValues: ["memsave", "nomemsave"],
+            values: descriptions.find(desc => desc.Variable === "MEMSAVE")?.Values || "No description available",
+            description: descriptions.find(desc => desc.Variable === "MEMSAVE")?.Description || "No description available"
+        }
+    ];
+} else if (relativeLine === 1) {
+    // Segunda línea: WFINIT WFMIN WFMAX [LINREG] [REGCONTINUE]
+    lineStructure = [
+        { 
+            name: "WFINIT", 
+            type: "float", 
+            required: true, 
+            minValue: 0, 
+            values: descriptions.find(desc => desc.Variable === "WFINIT")?.Values || "No description available",
+            description: descriptions.find(desc => desc.Variable === "WFINIT")?.Description || "No description available"
+        },
+        { 
+            name: "WFMIN", 
+            type: "float", 
+            required: true, 
+            minValue: 0, 
+            values: descriptions.find(desc => desc.Variable === "WFMIN")?.Values || "No description available",
+            description: descriptions.find(desc => desc.Variable === "WFMIN")?.Description || "No description available"
+        },
+        { 
+            name: "WFMAX", 
+            type: "float", 
+            required: true, 
+            minValue: 0, 
+            values: descriptions.find(desc => desc.Variable === "WFMAX")?.Values || "No description available",
+            description: descriptions.find(desc => desc.Variable === "WFMAX")?.Description || "No description available"
+        },
+        { 
+            name: "LINREG", 
+            type: "string", 
+            required: false, 
+            allowedValues: ["linreg", "nonlinreg"],
+            values: descriptions.find(desc => desc.Variable === "LINREG")?.Values || "No description available",
+            description: descriptions.find(desc => desc.Variable === "LINREG")?.Description || "No description available"
+        },
+        { 
+            name: "REGCONTINUE", 
+            type: "string", 
+            required: false, 
+            allowedValues: ["continue", "nocontinue"],
+            values: descriptions.find(desc => desc.Variable === "REGCONTINUE")?.Values || "No description available",
+            description: descriptions.find(desc => desc.Variable === "REGCONTINUE")?.Description || "No description available"
+        }
+    ];
+} else if (relativeLine === 2) {
+    // Tercera línea: WFFAC WFTOL IREGADJ [NOPTREGADJ REGWEIGHTRAT [REGSINGTHRESH]]
+    lineStructure = [
+        { 
+            name: "WFFAC", 
+            type: "float", 
+            required: true, 
+            minValue: 0, 
+            values: descriptions.find(desc => desc.Variable === "WFFAC")?.Values || "No description available",
+            description: descriptions.find(desc => desc.Variable === "WFFAC")?.Description || "No description available"
+        },
+        { 
+            name: "WFTOL", 
+            type: "float", 
+            required: true, 
+            minValue: 0, 
+            values: descriptions.find(desc => desc.Variable === "WFTOL")?.Values || "No description available",
+            description: descriptions.find(desc => desc.Variable === "WFTOL")?.Description || "No description available"
+        },
+        { 
+            name: "IREGADJ", 
+            type: "integer", 
+            required: true,
+            values: descriptions.find(desc => desc.Variable === "IREGADJ")?.Values || "No description available",
+            description: descriptions.find(desc => desc.Variable === "IREGADJ")?.Description || "No description available"
+        },
+        { 
+            name: "NOPTREGADJ", 
+            type: "integer", 
+            required: false,
+            values: descriptions.find(desc => desc.Variable === "NOPTREGADJ")?.Values || "No description available",
+            description: descriptions.find(desc => desc.Variable === "NOPTREGADJ")?.Description || "No description available"
+        },
+        { 
+            name: "REGWEIGHTRAT", 
+            type: "float", 
+            required: false,
+            values: descriptions.find(desc => desc.Variable === "REGWEIGHTRAT")?.Values || "No description available",
+            description: descriptions.find(desc => desc.Variable === "REGWEIGHTRAT")?.Description || "No description available"
+        },
+        { 
+            name: "REGSINGTHRESH", 
+            type: "float", 
+            required: false,
+            values: descriptions.find(desc => desc.Variable === "REGSINGTHRESH")?.Values || "No description available",
+            description: descriptions.find(desc => desc.Variable === "REGSINGTHRESH")?.Description || "No description available"
+        }
+    ];
+}
+// 
                 if (!lineStructure) {
                     console.log('No structure found for line:', relativeLine);
                     return null;

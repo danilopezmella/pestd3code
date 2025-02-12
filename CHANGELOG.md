@@ -1,5 +1,9 @@
 # Change Log
 
+### 0.1.6
+- **Fixed Hover for Regularization description**:
+  - Fixed the hover functionality for Regularization description to ensure consistent behavior and included detailed descriptions for each variable in the regularization section.
+
 ### 0.1.5
 - **Fixed Hover for Regularization and Regularisation**:
   - Corrected the hover functionality for both spellings of Regularization to ensure consistent behavior.
