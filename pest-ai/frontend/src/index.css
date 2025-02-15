@@ -1,0 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 12px;
+  background-color: #1a1b26;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #3b3d4f;
+  border-radius: 6px;
+  border: 3px solid #1a1b26;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #4a4c63;
+}
+
+::-webkit-scrollbar-track {
+  background-color: #1a1b26;
+  border-radius: 6px;
+}
+
+/* Firefox scrollbar styles */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #3b3d4f #1a1b26;
+}
+
+:root {
+  font-size: 16px;
+}
+
+@media screen and (min-width: 1024px) {
+  :root {
+    font-size: 16px;
+  }
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.app-container {
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+@layer base {
+  :root {
+    --background: #1A1F2C;
+    --foreground: #FFFFFF;
+  }
+  
+  
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-size: 1rem;
+  }
+
+  /* iPhone specific styles */
+  @media screen and (max-width: 428px) {
+    html, body, #root, .app-container {
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 100vh !important;
+      overflow-x: hidden !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    #root {
+      position: fixed !important;
+      top: 0 !important;
+      bottom: 0 !important;
+    }
+
+    .app-container {
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 100vh !important;
+      position: absolute !important;
+      top: 0 !important;
+      bottom: 0 !important;
+      background-color: var(--background) !important;
+    }
+
+    /* Ensure all direct children of app-container also respect the width */
+    .app-container > * {
+      width: 100% !important;
+      max-width: 100% !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+    }
+
+    /* Reset any potential transform or translate properties */
+    * {
+      transform: none !important;
+      translate: none !important;
+    }
+  }
+}
+
+@layer components {
+  .bot-message {
+    text-align: justify;
+    text-justify: inter-word;
+    hyphens: auto;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
+}

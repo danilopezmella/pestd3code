@@ -76,9 +76,24 @@
         "title": "Clear Pestcheck Diagnostics",
         "category": "PestD3code",
         "icon": "$(trash)"
+      },
+      {
+        "command": "pestd3code.openPestAI",
+        "title": "PestD3Code: Open Pest AI Assistant"
+      },
+      {
+        "command": "pestd3code.sendSelectionToAI",
+        "title": "PestD3Code: Send Selected Text to Pest AI"
       }
     ],
     "menus": {
+      "editor/context": [
+        {
+          "command": "pestd3code.sendSelectionToAI",
+          "when": "editorHasSelection",
+          "group": "navigation"
+        }
+      ],
       "editor/title": [
         {
             "command": "pestd3code.runPestCheck",

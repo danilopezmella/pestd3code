@@ -1,0 +1,277 @@
+﻿keyword,Type,Values,Description,Mandatory
+RSTFLE,text,“restart” or “norestart”,instructs PEST whether to write restart data,required
+PESTMODE,text,“estimation prediction regularization pareto”,PEST’s mode of operation,required
+NPAR,integer,greater than zero,number of parameters,required
+NOBS,integer,greater than zero,number of observations,required
+NPARGP,integer,greater than zero,number of parameter groups,required
+NPRIOR,integer,any integer value,absolute value is number of prior information equations. Negative value indicates supply of prior information in indexed format,required
+NOBSGP,integer,greater than zero,number of observation groups,required
+MAXCOMPDIM,integer,zero or greater,number of elements in compressed Jacobian matrix,optional
+NTPLFLE,integer,greater than zero,number of template files,required
+NINSFLE,integer,greater than zero,number of instruction files,required
+PRECIS,text,“single” or “double”,format for writing parameter values to model input files,required
+DPOINT,text,“point” or “nopoint”,omit decimal point in parameter values if possible,required
+NUMCOM,integer,greater than zero,number of command lines used to run model,optional
+JACFILE,integer,0  1 or -1,indicates whether model provides external derivatives file,optional
+MESSFILE,integer,zero or one, indicates whether PEST writes PEST-to-model message file,optional
+OBSREREF,text,“obsreref” “obsreref_N” or “noobsreref”, activates or de-activates observation re-referencing (with an optional pause after re-referencing runs),optional
+RLAMBDA1,real,zero or greater,initial Marquardt lambda,required
+RLAMFAC,real,positive or negative but not zero,dictates Marquardt lambda adjustment process,required
+PHIRATSUF,real,between zero and one,fractional objective function sufficient for end of current iteration,required
+PHIREDLAM,real,between zero and one,termination criterion for Marquardt lambda search,required
+NUMLAM,integer,one or greater. Possibly negative with Parallel or BEOPEST,maximum number of Marquardt lambdas to test,required
+JACUPDATE,integer,zero or greater,activation of Broyden’s Jacobian update procedure,optional
+LAMFORGIVE,text,“lamforgive” or “nolamforgive”,treat model run failure during lambda search as high objective function,optional
+DERFORGIVE,text,“derforgive” or “noderforgive”,accommodates model failure during Jacobian runs by setting pertinent sensitivities to zero,optional
+RELPARMAX,real,greater than zero,parameter relative change limit,required
+FACPARMAX,real,greater than one,parameter factor change limit,required
+FACORIG,real,between zero and one,minimum fraction of original parameter value in evaluating relative change,required
+IBOUNDSTICK,integer,zero or greater,instructs PEST not to compute derivatives for parameter at its bounds,optional
+UPVECBEND,integer,zero or one,instructs PEST to bend parameter upgrade vector if parameter hits bounds,optional
+PHIREDSWH,real,between zero and one,sets objective function change for introduction of central derivatives,required
+NOPTSWITCH,integer,one or greater,iteration before which PEST will not switch to central derivatives computation,optional
+SPLITSWH,real,zero or greater,the factor by which the objective function rises to invoke split slope derivatives analysis until end of run,optional
+DOAUI,text,“aui” “auid” or “noaui”,instructs PEST to implement automatic user intervention,optional
+DOSENREUSE,text,“senreuse” or “nosenreuse”,instructs PEST to reuse parameter sensitivities,optional
+BOUNDSCALE,text,“boundscale” or “noboundscale”,parameters are scaled by the inter-bounds interval if using singular value decomposition  LSQR or SVDA,optional
+NOPTMAX,integer,-2 -1 0 or any number greater than zero,number of optimization iterations,required
+PHIREDSTP,real,greater than zero,relative objective function reduction triggering termination,required
+NPHISTP,integer,greater than zero,number of successive iterations over which PHIREDSTP applies,required
+NPHINORED,integer,greater than zero,number of iterations since last drop in objective function to trigger termination,required
+RELPARSTP,real,greater than zero,maximum relative parameter change triggering termination,required
+NRELPAR,integer,greater than zero,number of successive iterations over which RELPARSTP applies,required
+PHISTOPTHRESH,real,zero or greater,objective function threshold triggering termination,optional
+LASTRUN,integer,zero or one,instructs PEST to undertake (or not) final model run with best parameters,optional
+PHIABANDON,real,a positive number or name of a file,objective function value at which to abandon optimization process or filename containing abandonment schedule,optional
+ICOV,integer,zero or one,record covariance matrix in matrix file,required
+ICOR,integer,zero or one,record correlation coefficient matrix in matrix file,required
+IEIG,integer,zero or one,record eigenvectors in matrix file,required
+IRES,integer,zero or one,record resolution data,optional
+JCOSAVE,text,“jcosave” or “nojcosave”,save best Jacobian file as a JCO file - overwriting previously saved files of the same name as the inversion process progresses,optional
+VERBOSEREC,text,“verboserec” or “noverboserec”,if set to “noverboserec” parameter and observation data lists are omitted from the run record file,optional
+JCOSAVEITN,text,“jcosaveitn” or “nojcosaveitn”,write current Jacobian matrix to iteration-specific JCO file at the end of every optimization iteration,optional
+REISAVEITN,text,“reisaveitn” or “noreisaveitn”,store best-fit residuals to iteration-specific residuals file at end of every optimization iteration,optional
+PARSAVEITN,text,“parsaveitn” or “noparsaveitn”,store iteration specific parameter value files,optional
+PARSAVERUN,text,“parsaverun” or “noparsaverun”,store run specific parameter value files,optional
+SENRELTHRESH,real,zero to one,relative parameter sensitivity below which sensitivity reuse is activated for a parameter,#N/A
+SENMAXREUSE,integer,integer other than zero,maximum number of reused sensitivities per iteration,#N/A
+SENALLCALCINT,integer,greater than one,iteration interval at which all sensitivities re-calculated,#N/A
+SENPREDWEIGHT,real,any number,weight to assign to prediction in computation of composite parameter sensitivities to determine sensitivity reuse,#N/A
+SENPIEXCLUDE,text,“yes” or “no”,include or exclude prior information when computing composite parameter sensitivities to determine sensitivity reuse,#N/A
+MAXAUI,integer,zero or greater,maximum number of AUI iterations per optimization iteration,#N/A
+AUISTARTOPT,integer,one or greater,optimization iteration at which to commence AUI,#N/A
+NOAUIPHIRAT,real,between zero and one,relative objective function reduction threshold triggering AUI,#N/A
+AUIRESTITN,integer,zero or greater but not one,AUI rest interval expressed in optimization iterations,#N/A
+AUISENSRAT,real,greater than one,composite parameter sensitivity ratio triggering AUI,#N/A
+AUIHOLDMAXCHG,integer,zero or one,instructs PEST to target parameters which change most when deciding which parameters to hold,#N/A
+AUINUMFREE,integer,greater than zero,cease AUI when only AUINUMFREE parameters are unheld,#N/A
+AUIPHIRATSUF,real,between zero and one,relative objective function improvement for termination of AUI,#N/A
+AUIPHIRATACCEPT,real,between zero and one,relative objective function reduction threshold for acceptance of AUI-calculated parameters,#N/A
+NAUINOACCEPT,integer,greater than zero,number of iterations since acceptance of parameter change for termination of AUI,#N/A
+SVDMODE,integer,zero or one,activates truncated singular value decomposition for solution of inverse problem,#N/A
+MAXSING,integer,greater than zero,number of singular values at which truncation occurs,#N/A
+EIGTHRESH,real,zero or greater but less than one,eigenvalue ratio threshold for truncation,#N/A
+EIGWRITE,integer,zero or one,determines content of SVD output file,#N/A
+LSQRMODE,integer,zero or one,activates LSQR solution of inverse problem,#N/A
+LSQR_ATOL,real,zero or greater,LSQR algorithm atol variable,#N/A
+LSQR_BTOL,real,zero or greater,LSQR algorithm btol variable,#N/A
+LSQR_CONLIM,real,zero or greater,LSQR algorithm conlim variable,#N/A
+LSQR_ITNLIM,integer,greater than zero,LSQR algorithm itnlim variable,#N/A
+LSQR_WRITE,integer,zero or one,instructs PEST to write LSQR file,#N/A
+BASEPESTFILE,text,a filename,name of base PEST control file,#N/A
+BASEJACFILE,text,a filename,name of base PEST Jacobian matrix file,#N/A
+SVDA_MULBPA,integer,zero or one,instructs PEST to record multiple BPA files,#N/A
+SVDA_SCALADJ,integer,-4 to 4,sets type of parameter scaling undertaken in super parameter definition,#N/A
+SVDA_EXTSUPER,integer,0 1 2 -2 3, sets means used to calculate super parameters,#N/A
+SVDA_SUPDERCALC,integer,zero or one,instructs PEST to compute super parameter sensitivities from base parameter sensitivities,#N/A
+SVDA_PAR_EXCL,integer,0, 1 or -1 if set to 1 instructs PEST to compute super parameters on basis only of observation group in base parameter PEST control file to which pareto-adjustable weighting is assigned in super parameter PEST control file. If set to -1 all groups other than this form basis for super parameter definition,#N/A
+PARGPNME,text,12 characters or less,parameter group name,#N/A
+INCTYP,text,“relative”,method by which parameter increments are calculated “rel_to_max” method by which parameter increments are calculated,#N/A
+DERINC,real,greater than zero,absolute or relative parameter increment,#N/A
+DERINCLB,real,zero or greater,absolute lower bound of relative parameter increment,#N/A
+FORCEN,text,“switch”,determines whether higher order derivatives calculation is undertaken “always_3” “switch_5” “always_5” determines whether higher order derivatives calculation is undertaken,#N/A
+DERINCMUL,real,greater than zero,derivative increment multiplier when undertaking higher order derivatives calculation,#N/A
+DERMTHD,text,“parabolic”,method of higher order derivatives calculation “best_fit” “minvar” “maxprec” method of higher order derivatives calculation,#N/A
+SPLITTHRESH,real,greater than zero (or zero to deactivate),slope threshold for split slope analysis,#N/A
+SPLITRELDIFF,real,greater than zero,relative slope difference threshold for action,#N/A
+SPLITACTION,text,text,smaller ; zero or previous;  zero or previous,#N/A
+PARNME,text,12 characters or less,parameter name,#N/A
+PARTRANS,text,log,parameter transformation fixed or tied parameter transformation,#N/A
+PARCHGLIM,text,relative,type of parameter change limit or absolute(N) type of parameter change limit,#N/A
+PARVAL1,real,any real number,initial parameter value,#N/A
+PARLBND,real,less than or equal to PARVAL1,parameter lower bound,#N/A
+PARUBND,real,greater than or equal to PARVAL1,parameter upper bound,#N/A
+PARGP,text,12 characters or less,parameter group name,#N/A
+SCALE,real,any number other than zero,multiplication factor for parameter,#N/A
+OFFSET,real,any number,number to add to parameter,#N/A
+DERCOM,integer,zero or greater,model command line used in computing parameter increments,#N/A
+PARTIED,text,12 characters or less,the name of the parameter to which another parameter is tied,#N/A
+OBGNME,text,12 characters or less,observation group name,#N/A
+GTARG,real,positive,group-specific target measurement objective function,#N/A
+COVFILE,text,a filename,covariance matrix file associated with group,#N/A
+OBSNME,text,20 characters or less,observation name,#N/A
+OBSVAL,real,any number,measured value of observation,#N/A
+OBGNME,text,12 characters or less,observation group to which observation belongs,#N/A
+DERCOMLINE,text,system command,command to run model for derivatives calculation,#N/A
+EXTDERFLE,text,a filename,name of external derivatives file,#N/A
+COMLINE,text,system command,command to run model,#N/A
+TEMPFLE,text,a filename,template file,#N/A
+INFLE,text,a filename,model input file,#N/A
+INSFLE,text,a filename,instruction file,#N/A
+OUTFLE,text,a filename,model output file,#N/A
+PILBL,text,20 characters or less,name of prior information equation,#N/A
+PIFAC,text,real number other than zero,parameter value factor,#N/A
+PARNME,text,12 characters or less,parameter name,#N/A
+PIVAL,real,any number,observed value of prior information equation,#N/A
+OBGNME,text,12 characters or less,observation group name,#N/A
+NPREDMAXMIN,integer,-1 or 1,maximise or minimise prediction,#N/A
+PREDNOISE,integer,0 or 1,instructs PEST to include predictive noise in prediction,#N/A
+PD0,real,greater than zero,target objective function,#N/A
+PD1,real,greater than PD0,acceptable objective function,#N/A
+PD2,real,greater than PD1,objective function at which Marquardt lambda testing procedure is altered as prediction is maximised/minimised,#N/A
+ABSPREDLAM,real,zero or greater,absolute prediction change to terminate Marquardt lambda testing,#N/A
+RELPREDLAM,real,zero or greater,relative prediction change to terminate Marquardt lambda testing,#N/A
+INITSCHFAC,real,greater than zero,initial line search factor,#N/A
+MULSCHFAC,real,greater than one,factor by which line search factors are increased along line,#N/A
+NSEARCH,integer,greater than zero,maximum number of model runs in line search,#N/A
+ABSPREDSWH,real,zero or greater,absolute prediction change at which to use central derivatives calculation,#N/A
+RELPREDSWH,real,zero or greater,relative prediction change at which to use central derivatives calculation,#N/A
+NPREDNORED,integer,one or greater,iterations since prediction raised/lowered at which termination is triggered,#N/A
+ABSPREDSTP,real,zero or greater,absolute prediction change at which to trigger termination,#N/A
+RELPREDSTP,real,zero or greater,relative prediction change at which to trigger termination,#N/A
+NPREDSTP,integer,two or greater,number of iterations over which ABSPREDSTP and RELPREDSTP apply,#N/A
+PHIMLIM,real,greater than zero,target measurement objective function,required
+PHIMACCEPT,real,greater than PHIMLIM,acceptable measurement objective function,required
+FRACPHIM,real,zero or greater,set target measurement objective function at this fraction of current measurement objective function,optional
+MEMSAVE,text,"memsave or ""nomemsave""",activate conservation of memory at cost of execution speed and quantity of model output,optional
+WFINIT,real,greater than zero,initial regularization weight factor,required
+WFMIN,real,greater than zero,minimum regularization weight factor,required
+WFMAX,real,greater than WFMAX,maximum regularization weight factor,required
+LINREG,text,"linreg or ""nonlinreg""",informs PEST that all regularization constraints are linear,optional
+REGCONTINUE,text,"continue or ""nocontinue""",instructs PEST to continue minimising regularization objective function even if measurement objective function less than PHIMLIM,optional
+WFFAC,real,greater than one,regularization weight factor adjustment factor,required
+WFTOL,real,greater than zero,convergence criterion for regularization weight factor,required
+IREGADJ,integer,0,instructs PEST to perform inter-regularization group weight factor adjustment or to compute new relative weights for regularization observations and prior information equations,required
+NOPTREGADJ,integer,one or greater,the optimization iteration interval for re-calculation of regularization weights if IREGADJ is 4 or 5,optional
+REGWEIGHTRAT,real,absolute value of one or greater,the ratio of highest to lowest regularization weight; spread is logarithmic with null space projection if set negative,optional
+REGSINGTHRESH,real,less than one and greater than zero,singular value of JtQJ (as factor of highest singular value) at which use of higher regularization weights commences if IREGADJ is set to 5,optional
+PARETO_OBSGROUP,text,12 characters or less,name of observation group whose weights are subject to multiplication by a variable weight factor,#N/A
+PARETO_WTFAC_START,real,zero or greater,initial weight factor for user-specified observation group,#N/A
+PARETO_WTFAC_FIN,real,greater than PARETO_WTFAC_START,final weight factor for user-specified observation group,#N/A
+NUM_WTFAC_INT,integer,greater than zero,number of weight factor increments to employ in traversing Pareto front,#N/A
+NUM_ITER_START,integer,zero or greater,number of optimization iterations to employ when using initial weight factor,#N/A
+NUM_ITER_GEN,integer,greater than zero,number of optimization iterations to employ when using any weight factor other than PARETO_WTFAC_START or PARETO_WTFAC_FIN,#N/A
+NUM_ITER_FIN,integer,zero or greater,number of optimization iterations to employ when using final weight factor,#N/A
+ALT_TERM,integer,zero or one,set to one in order to activate PEST termination determined by value of a specified model output,#N/A
+OBS_TERM,text,20 characters or less,"the name of an observation cited in the ""observation data"" section of the PEST control file whose value will be monitored for possible PEST run termination",#N/A
+ABOVE_OR_BELOW,text,"above or ""below""",determines whether the monitored model output must be above or below the threshold to precipitate run termination,#N/A
+OBS_THRESH,real,any number,value that monitored model output must exceed or undercut to precipitate model run termination,#N/A
+ITER_THRESH,integer,zero or greater,the number of optimization iterations for which the model output threshold must be exceeded or undercut to precipitate run termination,#N/A
+NOBS_REPORT,integer,zero or greater,number of model outputs whose values to report,#N/A
+OBS_REPORT_N,text,20 characters or less,"the name of the ""N""th observation whose value is reported in the POD and PPD files written by PEST when run in ""pareto"" mode",#N/A
+ies_num_reals,integer,,The number of realizations to draw in order to form parameter and observation ensembles.,
+parcov,text,,"The name of a file containing the prior parameter covariance matrix. This can be a parameter uncertainty file (extension "".unc"") a covariance matrix file (extension "".cov"") or a binary JCO or JCB file (extension "".jco"" or "".jcb"").",
+par_sigma_range,real,,The difference between a parameter's upper and lower bounds expressed as standard deviations.,
+ies_parameter_ensemble,text,,The name of a CSV or JCO/JCB file (recognized by its extension) containing user-supplied parameter realizations comprising the initial (prior) parameter ensemble. If this keyword is omitted PESTPP-IES generates the initial parameter ensemble itself.,
+ies_observation_ensemble,text,,The name of a CSV or JCO/JCB file (recognized by its extension) containing user-supplied observation plus noise realizations comprising the observation plus noise ensemble. If this keyword is omitted PESTPP-IES generates the observation plus noise ensemble itself.,
+ies_add_base,Boolean,,"If set to true instructs PESTPP-IES to include a ""realization"" in the initial parameter ensemble comprised of parameter values read from the ""parameter data"" section of the PEST control file. The corresponding observation ensemble is comprised of measurements read from the ""observation data"" section of the PEST control file.",
+ies_restart_observation_ensemble,text,,The name of a CSV or JCO/JCB file (recognized by its extension) containing model outputs calculated using a parameter ensemble. If it reads this file PESTPP-IES does not calculate these itself proceeding to upgrade calculations instead.,
+ies_restart_parameter_ensemble,text,,"The name of a CSV or JCO/JCB file (recognized by its extension) containing a parameter ensemble that corresponds to the ""ies_restart_observation_ensemble"". This option requires that the ""ies_restart_observation_ensemble"" control variable also be supplied. This ensemble is only used in the calculation of the regularization component of the objective function for a restarted PESTPP-IES analysis.",
+ies_enforce_bounds,Boolean,,If set to true PESTPP-IES will not transgress bounds supplied in the PEST control file when generating or accepting parameter realizations and when adjusting these realizations.,
+ies_initial_lambda,real,,"The initial Marquardt lambda. The default value is calculated based on the formula ""10^floor(log10(mu/2n))"". If supplied as a negative value then the absolute value of ""ies_initial_lambda"" is used as a multiplier of the default initial-phi-based value.",
+ies_lambda_mults,comma-separated reals,,Factors by which to multiply the best lambda from the previous iteration to yield values for testing parameter upgrades during the current iteration.,
+lambda_scale_fac,comma-separated reals,,Line search factors along parameter upgrade directions computed using different Marquardt lambdas.,
+ies_subset_size,integer,,"Number of realizations used in testing and evaluation of different Marquardt lambdas. If supplied as a negative value then the absolute value of ""ies_subset_size"" is treated as a percentage of the current ensemble size; this allows the subset size to fluctuate with the size of the ensemble.",
+ies_use_approx,Boolean,,Use complex or simple formula provided by Chen and Oliver (2013) for calculation of parameter upgrades. The more complex formula includes a function which constrains parameter realizations to respect prior means and probabilities.,
+ies_reg_factor,real,,Regularization objective function as a fraction of measurement objective function when constraining parameter realizations to respect initial values.,
+ies_bad_phi,real,,If the objective function calculated as an outcome of a model run is greater than this value the model run is deemed to have failed.,
+ies_bad_phi_sigma,real,,"If the objective function calculated for a given realization is greater than the current mean objective function of the ensemble plus the objective function standard deviation of the ensemble times ""ies_bad_phi_sigma""",
+ies_use_prior_scaling,Boolean,,Use a scaling factor based on the prior parameter distribution when evaluating parameter-to-model-output covariance used in calculation of the randomized Jacobian matrix.,
+ies_use_empirical_prior,Boolean,,"Use an empirical diagonal parameter covariance matrix for certain calculations. This matrix is contained in a file whose name is provided with the ""ies_parameter_ensemble"" keyword.",
+Ies_save_lambda_ensembles,Boolean,,Save a set of CSV or JCB files that record parameter realizations used when testing different Marquardt lambdas.,
+ies_verbose_level,0  1 or 2,,The level of diagnostic output provided by PESTPP-IES. If set to 2 all intermediate matrices are saved to ASCII files. This can require a considerable amount of storage.,
+ies_accept_phi_fac,real > 1.0,,The factor applied to the previous best mean objective function to determine if the current mean objective function is acceptable.,
+ies_lambda_dec_fac,real < 1.0,,The factor by which to decrease the value of the Marquardt lambda during the next IES iteration if the current iteration of the ensemble smoother process was successful in lowering the mean objective function.,
+ies_lambda_inc_fac,real > 1.0,,The factor by which to increase the current value of the Marquardt lambda for further lambda testing if the current lambda testing cycle was unsuccessful.,
+ies_subset_how,"first, last, random, phi_based",,"How to select the subset of realizations for objective function evaluation during upgrade testing. Default is ""random.""",
+ies_num_threads,integer > 1,,The number of threads to use during the localized upgrade solution process the automatic adaptive localization process. If the localizer contains many (>10K) rows then multithreading can substantially speed up the upgrade calculation process. ies_num_threads() should not be greater than the number of physical cores on the host machine.,
+ies_localizer,text,,The name of a matrix to use for localization. The extension of the file is used to determine the type: .mat is an ASCII matrix file .jcb/.jco signifies use of (enhanced) Jacobian matrix format (a binary format) while .csv signifies a comma-delimited file. Note that adjustable parameters not listed in localization matrix columns are implicitly treated as fixed while non-zero weighted observations not listed in rows of this matrix are implicitly treated as zero-weighted.,
+ies_group_draws,Boolean,,A flag to draw from the (multivariate) Gaussian prior by parameter/observation groups. This is usually a good idea since groups of parameters/observations are likely to have prior correlation.,
+ies_save_binary,Boolean,,A flag to save parameter and observation ensembles in binary (i.e. JCB) format instead of CSV format.,
+ies_csv_by_reals,Boolean,,A flag to save parameter and observation ensemble CSV files by realization instead of by variable name. If true each row of the CSV file is a realization. If false each column of the CSV file is a realization.,
+ies_autoadaloc,Boolean,,Flag to activate automatic adaptive localization.,
+ies_autoadaloc_sigma_dist,Real,,Real number representing the factor by which a correlation coefficient must exceed the standard deviation of background correlation coefficients to be considered significant. Default is 1.0.,
+tie_by_group,Boolean,,Flag to tie all adjustable parameters together within each parameter group. Initial parameter ratios are maintained as parameters are adjusted. Parameters that are designated as already tied or that have parameters tied to them are not affected.,
+ies_enforce_chglim,Boolean,,Flag to enforce parameter change limits (via FACPARMAX and RELPARMAX) in a way similar to PEST and PESTPP-GLM (by scaling the entire realization). Default is false.,
+ies_center_on,String,,"A realization name that should be used for the ensemble center in calculating the approximate Jacobian matrix. The realization name must be in both the parameter and observation ensembles. If not passed the mean vector is used as the center. The value ""_MEDIAN_"" can also be used which instructs PESTPP-IES to use the median vector for calculating anomalies.",
+enforce_tied_bounds,Boolean,,Flag to enforce parameter bounds on any tied parameters. Depending on the ratio between the tied and free parameters this option can greatly limit parameter changes.,
+ies_no_noise,Boolean,,Flag to not generate and use realizations of measurement noise. Default is False (that is to use measurement noise).,
+ies_drop_conflicts,Boolean,,Flag to remove non-zero weighted observations that are in a prior-data conflict state from the upgrade calculations. Default is False.,
+ies_pdc_sigma_distance,Real > 0.0,,The number of standard deviations from the mean used in checking for prior-data conflict.,
+ies_save_rescov,Boolean,,Flag to save the iteration-level residual covariance matrix. If ies_save_binary is True then a binary format file is written; otherwise an ASCII format (.cov) file is written. The file name is case.N.res.cov/.jcb. Note that this functionality does not scale beyond about 20000 non-zero-weighted observations.,
+obscov(),text,,The name of a file containing the observation noise covariance matrix. This can be a parameter uncertainty file (extension .unc) a covariance matrix file (extension .cov) or a binary JCO or JCB file (extension .jco or .jcb). Please see the section on this matrix above to understand the implications of using this matrix.,
+rand_seed,unsigned integer,,Seed for the random number generator.,
+ies_use_mda,Boolean,,Flag to use the (optionally iterative) Kalman update equation. The number of data assimilation iterations is controlled by NOPTMAX; NOPTMAX = 1 and ies_use_mda(true) results in the standard ensemble smoother Kalman update. If False the GLM iterative ensemble smoother equation is used. Default is False.,
+ies_mda_init_fac,double,,The initial MDA covariance inflation factor. Only used if ies_use_mda is true. Default is 10.0.,
+ies_mda_decl_fac,double,,The final MDA covariance inflation factor. Only used if ies_use_mda is true. Default is 0.5.,
+ies_upgrades_in_memory,Boolean,,Flag to hold parameter upgrade ensembles in memory during testing. If False parameter ensembles are saved to disk during testing and the best-phi ensemble is loaded from disk after testing. This can reduce memory pressure for very high dimensional problems. Default is True but is only activated if the number of parameters > 100K.,
+ies_ordered_binary,Boolean,,Flag to write control-file-ordered binary ensemble files. Only used if save_binary is true. If False hash-ordered binary files are written. For very high dimensional problems writing unordered binary can save lots of time. If not passed and number of parameters > 100K then ies_ordered_binary is set to False.,
+ensemble_output_precision,int,,Number of significant digits to use in ASCII format ensemble files. Default is 6.,
+ies_multimodal_alpha,double,,The fraction of the total ensemble size to use as the local neighborhood realizations in the multimodal solution process. Must be greater than zero and less than 1. Values of 0.1 to 0.25 seem to work well. Default is 1.0 (disable multimodal solution process).,
+ies_weight_ensemble,text,,The name of a CSV or JCO/JCB file (recognized by its extension) containing user-supplied weight vectors for each realization. If this keyword is omitted PESTPP-IES uses the weight vector in the control file for all realizations. Only used with ies_multimodal_alpha.,
+ies_phi_factor_file,text,,A two-column ASCII file that contains observation group tags and phi factors. Used to internally adjust weights to implement a balanced objective function using the mean residuals from the initial ensemble.,
+ies_phi_factors_by_real,Boolean,,A flag to use internal weight balancing for each realization. This option should be used in conjunction with the multimodal solution process.,
+ies_n_iter_reinflation,int,,The number of between-covariance reinflation iterations. Default is 0 which indicates not to reinflate parameter covariance.,
+ies_update_by_reals,Boolean,,Flag to indicate whether or not to update each realization according to its phi reduction. Default is False.,
+max_n_super,integer,,The maximum number of super parameters to use when conducting SVD-assisted inversion. The default is the number of adjustable parameters in which case the number of super parameters is effectively set by super_eigthresh().,
+super_eigthresh,real,,The ratio to the maximum singular value of JtQJ at which truncation takes place to form super parameters. Note however that if the number of super parameters calculated in this way exceeds max_n_super() then the value of the latter variable takes precedence.,
+n_iter_base,integer,,Where super parameters are estimated in some iterations and base parameters are estimated in other iterations this variable sets the number of sequential base parameter iterations to undertake before commencing an iteration in which super parameters are adjusted. If n_iter_base() is set to -1 this instructs PESTPP-GLM to emulate PEST behavior: a base parameter Jacobian matrix is calculated then super parameters are estimated as soon as they are defined on the basis of this matrix. Super parameters are estimated in all succeeding iterations.,
+n_iter_super,integer,,Where super parameters are estimated in some iterations and base parameters are estimated in other iterations this variable sets the number of sequential super parameter iterations to undertake before commencing an iteration in which a base parameter Jacobian matrix is recalculated and base parameters are adjusted.,
+jac_scale,Boolean,,Scale parameters by their sensitivities when calculating parameter upgrades. This can increase numerical precision; however it may incur a numerical cost.,
+svd_pack,text,,"This informs PESTPP-GLM of the package that it must employ to undertake singular value decomposition of the JtQJ matrix (appropriately modified to include the Marquardt lambda and regularization). Options are ""eigen"" and ""redsvd.""",
+lambdas,set of real numbers,,Values for the Marquardt lambda used in the calculation of parameter upgrades. Note that this base list is augmented with values bracketing the previous iteration's best lambda. However if a single value is specified only that lambda (and no other lambda) is used in all iterations.,
+lambda_scale_fac,set of real numbers,,These values are used to scale each parameter upgrade vector calculated using different values of lambda. This results in a line search along each upgrade vector direction. The number of tested parameter upgrades (and hence model runs) is equal to the number of lambdas times the number of scaling factors. Set lambda_scale_fac() to 1.0 to disable an upgrade direction line search.,
+base_jacobian,text,,Provide the name of a JCO file. The Jacobian matrix contained in this file will be used for the first iteration of the inversion process.,
+hotstart_resfile,text,,Specify the name of a residuals file from a previous PESTPP-GLM run. PESTPP-GLM will assume that these are model outputs corresponding to initial parameter values. It will use these instead of undertaking the initial model run.,
+parcov,text,,Provide the name of a JCO JCB NC or COV file from which the prior parameter covariance matrix used in FOSM analysis is read.,
+par_sigma_range,real,,The difference between a parameter's upper and lower bounds expressed as standard deviations.,
+glm_num_reals,integer,,Number of parameter realizations to draw from the posterior parameter distribution (using final estimated parameter values as the parameter mean vector and the FOSM-based posterior covariance matrix). Following generation of the realizations the model is run once for each realization. The resulting observation ensemble is saved in a CSV file named case.obs.csv; the parameter ensemble is saved in a CSV file named case.par.csv.,
+save_binary,Boolean,,A flag to save parameter and observation ensembles in binary format. If this is set to true parameter and observation ensembles are saved in files named case.par.jcb and case.obs.jcb.,
+tie_by_group,Boolean,,Flag to tie all adjustable parameters by group designation; however all user-supplied parameter tied-parent relationships are preserved. The effective number of adjustable parameters thus becomes the number of parameter groups (which contain at least one adjustable parameter) plus the number of parameters that are listed as having others tied to it.,
+iteration_summary,Boolean,,This flag activates or deactivates the writing of CSV files summarizing parameters (case.ipar) objective functions (case.iobj) sensitivities (case.isen) trial parameter upgrades (case.upg.csv) and parameter-to-run-id mapping (case.rid).,
+der_forgive,Boolean,,If set to true then if model run failure occurs when calculating finite-difference derivatives with respect to a certain parameter that parameter is frozen at its current value for the remainder of the iteration. If set to false PESTPP-GLM terminates execution with an appropriate message if this occurs.,
+enforce_tied_bounds,Boolean,,Flag to enforce parameter bounds on any tied parameters.,
+glm_accept_mc_phi,Boolean,,Flag to accept FOSM-based realization phi each base iteration if the phi is lower than the lambda-testing phi. Default is false.,
+rand_seed,unsigned integer,,Seed for the random number generator. Used for FOSM-based Monte Carlo.,
+glm_rebase_super,Boolean,,"A flag to run the super-parameter truncated values once at the start of the first super parameter iteration to provide a more accurate ""base"" run for calculating sensitivity numerators. Only applies if n_iter_base = -1 and base_jacobian is supplied. Default is False which indicates use either the hotstart_resfile residuals or the base run previously completed.",
+glm_iter_mc,Boolean,,Flag to undertake FOSM-based posterior Monte Carlo during each iteration of PESTPP-GLM. Default is False which will result in Monte Carlo only after iterations are done (depending on the glm_num_reals and uncertainty flags).,
+ensemble_output_precision,int,,Number of significant digits to use in ASCII format ensemble files. Default is 6.,
+glm_norm_form,String,,"The form of the normal matrix to use. Can be ""ident"" (identity matrix lambda scaling) ""diag"" (use the diagonal of XtQX for lambda scaling) or ""prior"" (scale with the inverse of the prior parameter covariance matrix). Default is ""diag.""",
+MAX_RUN_FAIL,Integer,greater than 0; default is 3,Maximum times the run manager will try to rerun a failed run,
+LAMBDAS,Comma-separated list of reals,greater than 0; default is (0.01 1 10 100 1000),Specify the standard values of lambda to be used each iteration,
+ITERATION_SUMMARY,Boolean,“TRUE” or “FALSE”; default is “TRUE”,Setting this to “TRUE” will save a summary of each iteration to a series of comma-separated files for easy plotting,
+DER_FORGIVE,Boolean,“TRUE” or “FALSE”; default is “TRUE”,Setting this to “FALSE” will turn off derivative forgive and cause PEST++ to terminate if a run fails while computing the Jacobian,
+PARAMETER_COVARIANCE,Text,Filename; default is none,The name of a PEST-compatible ASCII matrix or uncertainty file to use as the prior parameter covariance matrix,
+OVERDUE_RESCHED_FAC,Real,greater than 1.0; default is 1.15,YAMR specific command. If model run takes longer than (OVERDUE_RESCHED_FAC * the average runtime) it will be rescheduled on another node if one is available,
+OVERDUE_GIVEUP_FAC,Real,greater than 1.0; default is 100.0,YAMR specific command. If a model run has been running longer than (OVERDUE_GIVEUP_FAC * the average runtime) it will be canceled,
+N_ITER_BASE,Integer,1 or greater,Number of base parameter iterations performed for each superparameter iteration,
+N_ITER_SUPER,Integer,0 or greater,Number of superparameter iterations performed for each base parameter iteration,
+SUPER_EIGTHRES,Real,any positive number (typically should be greater than 1.0E−7),PEST++ will not include any superparameters whose ratio with the largest superparameter is less than this ratio,
+MAX_N_SUPER,Integer,integer between 1 and the minimum either of maximum number of parameters or the maximum number of observations,Maximum number of superparameters to use in the superparameter iterations,
+MAX_REG_ITER,Integer,integer greater than 1; default is 20,Provides a limit on the maximum number of iterations used to compute dynamic regularization weights when PEST++ is run in regularization mode,
+MAX_SUPER_FRZ_ITER,Integer,1 or greater; default value is 5,Maximum number of times a superparameter iteration will try to freeze any parameters that go out of bounds and try to recompute a Jacobian,
+AUTO_NORM,Integer,1 or greater; default is no scaling,Automatically normalizes the sensitivities by assuming there are X standard deviations between the upper and lower parameter bounds,
+SVD_PACK,String,“JACOBI” or “PROPACK”; default is “JACOBI”,Flag to use PROPACK to compute SVD factorizations. “JACOBI” is the SVD provided by the EIGEN library; “PROPACK” is the iterative SVD factorization suitable for large problems,
+MAT_INV,String,“Q1/2J” or “JTQJ”; default is “JTQJ”,Flag to specify the formulation of the normal equation. This option is forced to “Q1/2J” when PROPACK is used,
+SUPER_RELPARMAX,Real,greater than 0; default is 0.1,Parameter relative change limit for superparameters,
+* control data,,,,
+* singular value decomposition,,,,
+* parameter groups,,,,
+* parameter data,,,,
+* observation groups,,,,
+* observation data,,,,
+* model command line,,,,
+* model input/output,,,,
+* prior information,,,,
+* regularisation,,,,
+* regularization,,,,

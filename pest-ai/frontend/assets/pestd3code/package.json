@@ -1,0 +1,162 @@
+{
+  "name": "pestd3code",
+  "displayName": "PestD3code",
+  "description": "Enhance readability and usability of PEST control files for MODFLOW with structured decorators, hover support, and interactive features.",
+  "publisher": "DanielLopezMella",
+  "icon": "images/icon.png",
+  "version": "0.1.6",
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danilopezmella/pestd3code.git"
+  },
+  "activationEvents": [
+    "workspaceContains:**/*.{pst,pest}",
+    "onLanguage:pest",
+    "onStartupFinished",  
+     "onLanguage:bat",
+    "onLanguage:shellscript"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configurationDefaults": {
+      "[pst]": {
+        "editor.showFoldingControls": "always",
+        "editor.guides.indentation": true
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "title": "PestD3Code",
+      "properties": {
+        "pestd3code.pestcheckPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the Pestchek. Use the 'Try to autoset Pestcheck' or 'Set Pestcheck Path Manually' commands to browse for the file."
+        },
+        "pestd3code.skipWarnings": {
+          "type": "boolean",
+          "default": false,
+          "description": "Skip warnings and template/instruction/coverage matrix file checking (/s flag)"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "pestd3code.activate",
+        "title": "Activate PestD3code"
+      },
+      {
+        "command": "extension.openManual",
+        "title": "Open PEST++ Manual"
+      },
+      {
+        "command": "pestd3code.findPestCheck",
+        "title": "Try to autoset Pestcheck",
+        "category": "PestD3code"
+      },
+      {
+        "command": "pestd3code.setPestcheckPath",
+        "title": "Set Pestcheck Path Manually",
+        "category": "PestD3code"
+      },
+      {
+        "command": "pestd3code.runPestCheck",
+        "title": "Run Pestcheck",
+        "category": "PestD3code",
+        "icon": "$(run)"
+      },
+      {
+        "command": "pestd3code.clearDiagnostics",
+        "title": "Clear Pestcheck Diagnostics",
+        "category": "PestD3code",
+        "icon": "$(trash)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+            "command": "pestd3code.runPestCheck",
+            "group": "navigation@1",
+            "when": "resourceExtname == .pst"
+        },
+        {
+            "command": "pestd3code.clearDiagnostics",
+            "group": "navigation@2",
+            "when":  "resourceExtname == .pst || rawOutputViewActive"
+        }
+    ],
+      "view/item/context": [
+        {
+          "command": "pestd3code.clearDiagnostics",
+          "when": "view == problems",
+          "group": "navigation"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "pestd3code.clearDiagnostics",
+          "when": "view == problems",
+          "group": "navigation"
+        }
+      ]
+    },
+    "languages": [
+      {
+        "id": "pst",
+        "extensions": [
+          ".pst"
+        ],
+        "aliases": [
+          "PEST File"
+        ],
+        "configuration": "./syntaxes/pst-language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "pst",
+        "scopeName": "source.pst",
+        "path": "./syntaxes/pst.tmLanguage.json"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "pestd3code.runPestCheck",
+        "key": "ctrl+shift+r",
+        "when": "editorTextFocus && editorLangId == 'pst'"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "build": "npm run vscode:prepublish",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test",
+    "package": "npx @vscode/vsce package",
+    "publish": "npx @vscode/vsce publish"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.9",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.84.0",
+    "@typescript-eslint/eslint-plugin": "^8.10.0",
+    "@typescript-eslint/parser": "^8.7.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "@vscode/vsce": "^3.2.1",
+    "eslint": "^9.13.0",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "csv-parse": "^5.6.0"
+  }
+}

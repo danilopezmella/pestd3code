@@ -1,0 +1,18 @@
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/ask" -Method Post -ContentType "application/json" -Body '{ "user_id": "789", "question": "What is noptmax and why is lamforgive important?" }'
+
+
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/ask?alpha=0.7" -Method Post -ContentType "application/json" -Body '{ "user_id": "789", "question": "maxcompdim?" }'
+
+Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/ask" -Method Post -ContentType "application/json" -Body '{ "user_id": "789", "question": "maxcompdim and what is noptmax?", "alpha": 0.7 }'
+
+
+
+BACKEND
+
+backend\.venv\Scripts\Activate.ps1
+cd C:\code\n8n\backend; python -m src.main
+cd C:\code\n8n\frontend; npm run dev
+
+uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+
+http://localhost:8000/docs

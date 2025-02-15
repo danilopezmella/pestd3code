@@ -1,0 +1,27 @@
+.bg-gradient {
+  background: linear-gradient(180deg, #000000 0%, #2a2a2a 100%);
+}
+
+@keyframes modflow-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+.logo-pulse {
+  animation: modflow-pulse 3s infinite ease-in-out;
+  transform-origin: center center;
+  transform-box: fill-box;
+}
+
+.glow-effect {
+  text-shadow: 
+    0 0 7px rgba(255,255,255,.3),
+    0 0 10px rgba(255,255,255,.2),
+    0 0 21px rgba(255,255,255,.1),
+    0 0 42px rgba(155,135,245,.1),
+    0 0 82px rgba(155,135,245,.1),
+    0 0 92px rgba(155,135,245,.1),
+    0 0 102px rgba(155,135,245,.1),
+    0 0 151px rgba(155,135,245,.1);
+} 

@@ -1,0 +1,25 @@
+{
+    "scopeName": "source.pst",
+    "patterns": [
+        {
+            "match": "^\\*.*",
+            "name": "keyword"
+        },
+        {
+            "match": "\\b\\d+\\.\\d+(?:[eE][+-]?\\d+)?\\b", 
+            "name": "constant.numeric" 
+        },
+        {
+            "match": "\\b\\d+\\b",
+            "name": "constant.numeric" 
+        },
+        {
+            "match": "\\b[a-zA-Z_]+\\b",
+            "name": "variable" 
+        }
+    ]
+,
+    "repository": {},
+    "fileTypes": ["pst"],
+    "name": "PEST File"
+}

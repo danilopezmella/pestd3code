@@ -1,0 +1,23 @@
+{
+	"compilerOptions": {
+		"module": "Node16",
+		"target": "ES2022",
+		"outDir": "out",
+		"lib": ["ES2022"],
+		"sourceMap": true,
+		"rootDir": "src",
+		"strict": true,
+		"esModuleInterop": true,        // Facilita la interoperabilidad con módulos CommonJS
+		"forceConsistentCasingInFileNames": true, // Evita problemas de nombres de archivo en sistemas sensibles a mayúsculas/minúsculas
+		"skipLibCheck": true,           // Mejora la velocidad de compilación ignorando la validación de tipos en las dependencias
+		"noImplicitReturns": true,      // Obliga a que todas las rutas en una función devuelvan un valor
+		"noFallthroughCasesInSwitch": true, // Previene errores en `switch` al no usar `break`
+		"resolveJsonModule": true,      // Permite importar archivos JSON
+		"moduleResolution": "node16",    // Usa la resolución de módulos compatible con Node.js
+		"noUnusedLocals": false,         // Advierte sobre variables locales no utilizadas
+		"noUnusedParameters": true      // Advierte sobre parámetros no utilizados en funciones
+	},
+	"include": ["src/**/*"], // Incluye todo el código fuente
+	"exclude": ["node_modules", "out"] // Excluye carpetas que no deben ser compiladas
+	
+}

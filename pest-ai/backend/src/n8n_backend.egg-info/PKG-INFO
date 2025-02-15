@@ -1,0 +1,13 @@
+Metadata-Version: 2.2
+Name: n8n-backend
+Version: 0.1.0
+Requires-Python: >=3.8
+Requires-Dist: fastapi
+Requires-Dist: uvicorn
+Requires-Dist: psycopg2
+Requires-Dist: python-dotenv
+Requires-Dist: pydantic
+Requires-Dist: pydantic-ai
+Requires-Dist: supabase
+Dynamic: requires-dist
+Dynamic: requires-python

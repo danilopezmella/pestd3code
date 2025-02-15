@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="format-detection" content="telephone=no">
+    <title>PestAI</title>
+    <script>
+      // Only register the service worker if NOT in a VS Code WebView.
+      if (!window.acquireVsCodeApi && 'serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/service-worker.js?v=1.0.0')
+          .then(registration => {
+            console.log('Service worker registered:', registration);
+          })
+          .catch(err => {
+            console.error('Service worker registration failed:', err);
+          });
+      } else {
+        console.log('Running inside VS Code WebView: skipping service worker registration.');
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

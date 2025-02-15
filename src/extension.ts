@@ -709,6 +709,9 @@ outputChannel.show(true);
 let rawPanel: vscode.WebviewPanel | undefined;
 // #endregion RUN PESTCHEK. The good stuff ends here
 
+
+
+
 /*=======================================================
 MAIN EXTENSION ACTIVATION FUNCTION
 =======================================================*/
@@ -789,6 +792,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             }
         })
     );
+
 
 
     // true = preservar foco
@@ -1577,6 +1581,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     // #endregion Folding provider for PEST control file
 
+
+
+
     /*========================================================
     Hover provider for control data and SVD sections
     ========================================================*/
@@ -1768,9 +1775,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 console.log('Current section:', currentSection ? currentSection.parent : 'None');
                 console.log('Current line:', position.line);
 
-                if (!currentSection || 
-                    (currentSection.parent.toLowerCase() !== "* regularisation" && 
-                     currentSection.parent.toLowerCase() !== "* regularization")) {
+                if (!currentSection ||
+                    (currentSection.parent.toLowerCase() !== "* regularisation" &&
+                        currentSection.parent.toLowerCase() !== "* regularization")) {
                     console.log("Not in regularisation or regularization section");
                     return null;
                 }
@@ -1789,137 +1796,137 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
                 // Seleccionar la estructura correcta según la línea
                 // Seleccionar la estructura correcta según la línea
-let lineStructure;
-if (relativeLine === 0) {
-    // Primera línea: PHIMLIM PHIMACCEPT [FRACPHIM] [MEMSAVE]
-    lineStructure = [
-        { 
-            name: "PHIMLIM", 
-            type: "float", 
-            required: true, 
-            minValue: 0, 
-            values: descriptions.find(desc => desc.Variable === "PHIMLIM")?.Values || "No description available",
-            description: descriptions.find(desc => desc.Variable === "PHIMLIM")?.Description || "No description available"
-        },
-        { 
-            name: "PHIMACCEPT", 
-            type: "float", 
-            required: true, 
-            minValue: 0, 
-            values: descriptions.find(desc => desc.Variable === "PHIMACCEPT")?.Values || "No description available",
-            description: descriptions.find(desc => desc.Variable === "PHIMACCEPT")?.Description || "No description available"
-        },
-        { 
-            name: "FRACPHIM", 
-            type: "float", 
-            required: false, 
-            minValue: 0, 
-            values: descriptions.find(desc => desc.Variable === "FRACPHIM")?.Values || "No description available",
-            description: descriptions.find(desc => desc.Variable === "FRACPHIM")?.Description || "No description available"
-        },
-        { 
-            name: "MEMSAVE", 
-            type: "string", 
-            required: false, 
-            allowedValues: ["memsave", "nomemsave"],
-            values: descriptions.find(desc => desc.Variable === "MEMSAVE")?.Values || "No description available",
-            description: descriptions.find(desc => desc.Variable === "MEMSAVE")?.Description || "No description available"
-        }
-    ];
-} else if (relativeLine === 1) {
-    // Segunda línea: WFINIT WFMIN WFMAX [LINREG] [REGCONTINUE]
-    lineStructure = [
-        { 
-            name: "WFINIT", 
-            type: "float", 
-            required: true, 
-            minValue: 0, 
-            values: descriptions.find(desc => desc.Variable === "WFINIT")?.Values || "No description available",
-            description: descriptions.find(desc => desc.Variable === "WFINIT")?.Description || "No description available"
-        },
-        { 
-            name: "WFMIN", 
-            type: "float", 
-            required: true, 
-            minValue: 0, 
-            values: descriptions.find(desc => desc.Variable === "WFMIN")?.Values || "No description available",
-            description: descriptions.find(desc => desc.Variable === "WFMIN")?.Description || "No description available"
-        },
-        { 
-            name: "WFMAX", 
-            type: "float", 
-            required: true, 
-            minValue: 0, 
-            values: descriptions.find(desc => desc.Variable === "WFMAX")?.Values || "No description available",
-            description: descriptions.find(desc => desc.Variable === "WFMAX")?.Description || "No description available"
-        },
-        { 
-            name: "LINREG", 
-            type: "string", 
-            required: false, 
-            allowedValues: ["linreg", "nonlinreg"],
-            values: descriptions.find(desc => desc.Variable === "LINREG")?.Values || "No description available",
-            description: descriptions.find(desc => desc.Variable === "LINREG")?.Description || "No description available"
-        },
-        { 
-            name: "REGCONTINUE", 
-            type: "string", 
-            required: false, 
-            allowedValues: ["continue", "nocontinue"],
-            values: descriptions.find(desc => desc.Variable === "REGCONTINUE")?.Values || "No description available",
-            description: descriptions.find(desc => desc.Variable === "REGCONTINUE")?.Description || "No description available"
-        }
-    ];
-} else if (relativeLine === 2) {
-    // Tercera línea: WFFAC WFTOL IREGADJ [NOPTREGADJ REGWEIGHTRAT [REGSINGTHRESH]]
-    lineStructure = [
-        { 
-            name: "WFFAC", 
-            type: "float", 
-            required: true, 
-            minValue: 0, 
-            values: descriptions.find(desc => desc.Variable === "WFFAC")?.Values || "No description available",
-            description: descriptions.find(desc => desc.Variable === "WFFAC")?.Description || "No description available"
-        },
-        { 
-            name: "WFTOL", 
-            type: "float", 
-            required: true, 
-            minValue: 0, 
-            values: descriptions.find(desc => desc.Variable === "WFTOL")?.Values || "No description available",
-            description: descriptions.find(desc => desc.Variable === "WFTOL")?.Description || "No description available"
-        },
-        { 
-            name: "IREGADJ", 
-            type: "integer", 
-            required: true,
-            values: descriptions.find(desc => desc.Variable === "IREGADJ")?.Values || "No description available",
-            description: descriptions.find(desc => desc.Variable === "IREGADJ")?.Description || "No description available"
-        },
-        { 
-            name: "NOPTREGADJ", 
-            type: "integer", 
-            required: false,
-            values: descriptions.find(desc => desc.Variable === "NOPTREGADJ")?.Values || "No description available",
-            description: descriptions.find(desc => desc.Variable === "NOPTREGADJ")?.Description || "No description available"
-        },
-        { 
-            name: "REGWEIGHTRAT", 
-            type: "float", 
-            required: false,
-            values: descriptions.find(desc => desc.Variable === "REGWEIGHTRAT")?.Values || "No description available",
-            description: descriptions.find(desc => desc.Variable === "REGWEIGHTRAT")?.Description || "No description available"
-        },
-        { 
-            name: "REGSINGTHRESH", 
-            type: "float", 
-            required: false,
-            values: descriptions.find(desc => desc.Variable === "REGSINGTHRESH")?.Values || "No description available",
-            description: descriptions.find(desc => desc.Variable === "REGSINGTHRESH")?.Description || "No description available"
-        }
-    ];
-}
-// 
+                let lineStructure;
+                if (relativeLine === 0) {
+                    // Primera línea: PHIMLIM PHIMACCEPT [FRACPHIM] [MEMSAVE]
+                    lineStructure = [
+                        {
+                            name: "PHIMLIM",
+                            type: "float",
+                            required: true,
+                            minValue: 0,
+                            values: descriptions.find(desc => desc.Variable === "PHIMLIM")?.Values || "No description available",
+                            description: descriptions.find(desc => desc.Variable === "PHIMLIM")?.Description || "No description available"
+                        },
+                        {
+                            name: "PHIMACCEPT",
+                            type: "float",
+                            required: true,
+                            minValue: 0,
+                            values: descriptions.find(desc => desc.Variable === "PHIMACCEPT")?.Values || "No description available",
+                            description: descriptions.find(desc => desc.Variable === "PHIMACCEPT")?.Description || "No description available"
+                        },
+                        {
+                            name: "FRACPHIM",
+                            type: "float",
+                            required: false,
+                            minValue: 0,
+                            values: descriptions.find(desc => desc.Variable === "FRACPHIM")?.Values || "No description available",
+                            description: descriptions.find(desc => desc.Variable === "FRACPHIM")?.Description || "No description available"
+                        },
+                        {
+                            name: "MEMSAVE",
+                            type: "string",
+                            required: false,
+                            allowedValues: ["memsave", "nomemsave"],
+                            values: descriptions.find(desc => desc.Variable === "MEMSAVE")?.Values || "No description available",
+                            description: descriptions.find(desc => desc.Variable === "MEMSAVE")?.Description || "No description available"
+                        }
+                    ];
+                } else if (relativeLine === 1) {
+                    // Segunda línea: WFINIT WFMIN WFMAX [LINREG] [REGCONTINUE]
+                    lineStructure = [
+                        {
+                            name: "WFINIT",
+                            type: "float",
+                            required: true,
+                            minValue: 0,
+                            values: descriptions.find(desc => desc.Variable === "WFINIT")?.Values || "No description available",
+                            description: descriptions.find(desc => desc.Variable === "WFINIT")?.Description || "No description available"
+                        },
+                        {
+                            name: "WFMIN",
+                            type: "float",
+                            required: true,
+                            minValue: 0,
+                            values: descriptions.find(desc => desc.Variable === "WFMIN")?.Values || "No description available",
+                            description: descriptions.find(desc => desc.Variable === "WFMIN")?.Description || "No description available"
+                        },
+                        {
+                            name: "WFMAX",
+                            type: "float",
+                            required: true,
+                            minValue: 0,
+                            values: descriptions.find(desc => desc.Variable === "WFMAX")?.Values || "No description available",
+                            description: descriptions.find(desc => desc.Variable === "WFMAX")?.Description || "No description available"
+                        },
+                        {
+                            name: "LINREG",
+                            type: "string",
+                            required: false,
+                            allowedValues: ["linreg", "nonlinreg"],
+                            values: descriptions.find(desc => desc.Variable === "LINREG")?.Values || "No description available",
+                            description: descriptions.find(desc => desc.Variable === "LINREG")?.Description || "No description available"
+                        },
+                        {
+                            name: "REGCONTINUE",
+                            type: "string",
+                            required: false,
+                            allowedValues: ["continue", "nocontinue"],
+                            values: descriptions.find(desc => desc.Variable === "REGCONTINUE")?.Values || "No description available",
+                            description: descriptions.find(desc => desc.Variable === "REGCONTINUE")?.Description || "No description available"
+                        }
+                    ];
+                } else if (relativeLine === 2) {
+                    // Tercera línea: WFFAC WFTOL IREGADJ [NOPTREGADJ REGWEIGHTRAT [REGSINGTHRESH]]
+                    lineStructure = [
+                        {
+                            name: "WFFAC",
+                            type: "float",
+                            required: true,
+                            minValue: 0,
+                            values: descriptions.find(desc => desc.Variable === "WFFAC")?.Values || "No description available",
+                            description: descriptions.find(desc => desc.Variable === "WFFAC")?.Description || "No description available"
+                        },
+                        {
+                            name: "WFTOL",
+                            type: "float",
+                            required: true,
+                            minValue: 0,
+                            values: descriptions.find(desc => desc.Variable === "WFTOL")?.Values || "No description available",
+                            description: descriptions.find(desc => desc.Variable === "WFTOL")?.Description || "No description available"
+                        },
+                        {
+                            name: "IREGADJ",
+                            type: "integer",
+                            required: true,
+                            values: descriptions.find(desc => desc.Variable === "IREGADJ")?.Values || "No description available",
+                            description: descriptions.find(desc => desc.Variable === "IREGADJ")?.Description || "No description available"
+                        },
+                        {
+                            name: "NOPTREGADJ",
+                            type: "integer",
+                            required: false,
+                            values: descriptions.find(desc => desc.Variable === "NOPTREGADJ")?.Values || "No description available",
+                            description: descriptions.find(desc => desc.Variable === "NOPTREGADJ")?.Description || "No description available"
+                        },
+                        {
+                            name: "REGWEIGHTRAT",
+                            type: "float",
+                            required: false,
+                            values: descriptions.find(desc => desc.Variable === "REGWEIGHTRAT")?.Values || "No description available",
+                            description: descriptions.find(desc => desc.Variable === "REGWEIGHTRAT")?.Description || "No description available"
+                        },
+                        {
+                            name: "REGSINGTHRESH",
+                            type: "float",
+                            required: false,
+                            values: descriptions.find(desc => desc.Variable === "REGSINGTHRESH")?.Values || "No description available",
+                            description: descriptions.find(desc => desc.Variable === "REGSINGTHRESH")?.Description || "No description available"
+                        }
+                    ];
+                }
+                // 
                 if (!lineStructure) {
                     console.log('No structure found for line:', relativeLine);
                     return null;
@@ -4630,6 +4637,114 @@ if (relativeLine === 0) {
     });
 
     // #endregion Hover provider for pest++ section
+
+    // #region Pest AI Panel
+
+    // Global variable to track the Pest AI panel
+
+
+    let pestAiPanel: vscode.WebviewPanel | undefined;
+
+context.subscriptions.push(
+  vscode.commands.registerCommand('pestd3code.openPestAI', () => {
+    if (pestAiPanel) {
+      pestAiPanel.reveal(vscode.ViewColumn.One);
+    } else {
+      // Specify multiple allowed directories
+      const resourceRoots = [
+        vscode.Uri.file(path.join(context.extensionPath, 'pest-ai', 'frontend', 'dist')),
+        vscode.Uri.file(path.join(context.extensionPath, 'pest-ai', 'frontend', 'dist', 'pest-ai')),
+        vscode.Uri.file(path.join(context.extensionPath, 'pest-ai', 'frontend', 'dist', 'modflow')),
+        vscode.Uri.file(path.join(context.extensionPath, 'pest-ai', 'frontend', 'dist', 'pestd3code'))
+      ];
+      
+      pestAiPanel = vscode.window.createWebviewPanel(
+        'pestAI',
+        'Pest AI Assistant',
+        vscode.ViewColumn.One,
+        {
+          enableScripts: true,
+          retainContextWhenHidden: true,
+          localResourceRoots: resourceRoots
+        }
+      );
+
+      pestAiPanel.webview.html = getPestAIHtmlContent(pestAiPanel.webview, context);
+
+      pestAiPanel.onDidDispose(() => {
+        pestAiPanel = undefined;
+      }, null, context.subscriptions);
+    }
+  })
+);
+
+    
+
+    /**
+     * Function to get the HTML content for the Pest AI panel.
+     * This function reads the built index.html from the Pest AI frontend and
+     * replaces resource paths with webview URIs.
+     */
+
+    
+    function getPestAIHtmlContent(webview: vscode.Webview, context: vscode.ExtensionContext): string {
+        const htmlFilePath = path.join(context.extensionPath, 'pest-ai', 'frontend', 'dist', 'index.html');
+        console.log(`Loading Pest AI HTML from: ${htmlFilePath}`);
+        
+        let html = fs.readFileSync(htmlFilePath, 'utf8');
+        
+        // Base directory for built files
+        const distPath = path.join(context.extensionPath, 'pest-ai', 'frontend', 'dist');
+        console.log(`Using Pest AI dist path: ${distPath}`);
+        
+        html = html.replace(/(src|href)="\/([^"]+)"/g, (_match, attr, relPath) => {
+          let resourcePath = path.join(distPath, relPath);
+          if (fs.existsSync(resourcePath)) {
+            console.log(`Found ${attr}="${relPath}" directly in dist: ${resourcePath}`);
+          } else {
+            // Try in 'dist/pest-ai'
+            let altPath = path.join(distPath, 'pest-ai', relPath);
+            if (fs.existsSync(altPath)) {
+              resourcePath = altPath;
+              console.log(`Found ${attr}="${relPath}" in dist/pest-ai: ${resourcePath}`);
+            } else {
+              // Try in 'dist/modflow'
+              altPath = path.join(distPath, 'modflow', relPath);
+              if (fs.existsSync(altPath)) {
+                resourcePath = altPath;
+                console.log(`Found ${attr}="${relPath}" in dist/modflow: ${resourcePath}`);
+              } else {
+                // Try in 'dist/pestd3code'
+                altPath = path.join(distPath, 'pestd3code', relPath);
+                if (fs.existsSync(altPath)) {
+                  resourcePath = altPath;
+                  console.log(`Found ${attr}="${relPath}" in dist/pestd3code: ${resourcePath}`);
+                } else {
+                  // Fall back to extension root
+                  resourcePath = path.join(context.extensionPath, relPath);
+                  if (fs.existsSync(resourcePath)) {
+                    console.log(`Not found in dist. Using extension root for ${attr}="${relPath}": ${resourcePath}`);
+                  } else {
+                    console.warn(`Resource ${attr}="${relPath}" not found in any expected location. Last attempted: ${resourcePath}`);
+                  }
+                }
+              }
+            }
+          }
+          const resourceUri = webview.asWebviewUri(vscode.Uri.file(resourcePath));
+          console.log(`Replacing ${attr} for "${relPath}" with URI: ${resourceUri}`);
+          return `${attr}="${resourceUri}"`;
+        });
+        
+        const cspMetaTag = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https: data:; script-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; connect-src http://localhost:8000 http://127.0.0.1:8000;">`;
+        html = html.replace(/<meta charset="UTF-8">/, `<meta charset="UTF-8">\n${cspMetaTag}`);
+        console.log('Injected CSP meta tag into HTML.');
+        
+        return html;
+      }
+      
+      
+      
 
     /*========================================================
     PUTTING IT ALL TOGETHER
