@@ -130,7 +130,7 @@
         "aliases": [
           "PEST File"
         ],
-        "configuration": "./syntaxes/pst-language-configuration.json"
+        "configuration": "./syntaxes/language-configuration.json"
       }
     ],
     "grammars": [

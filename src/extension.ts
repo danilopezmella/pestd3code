@@ -4645,40 +4645,42 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     let pestAiPanel: vscode.WebviewPanel | undefined;
 
-context.subscriptions.push(
-  vscode.commands.registerCommand('pestd3code.openPestAI', () => {
-    if (pestAiPanel) {
-      pestAiPanel.reveal(vscode.ViewColumn.One);
-    } else {
-      // Specify multiple allowed directories
-      const resourceRoots = [
-        vscode.Uri.file(path.join(context.extensionPath, 'pest-ai', 'frontend', 'dist')),
-        vscode.Uri.file(path.join(context.extensionPath, 'pest-ai', 'frontend', 'dist', 'pest-ai')),
-        vscode.Uri.file(path.join(context.extensionPath, 'pest-ai', 'frontend', 'dist', 'modflow')),
-        vscode.Uri.file(path.join(context.extensionPath, 'pest-ai', 'frontend', 'dist', 'pestd3code'))
-      ];
-      
-      pestAiPanel = vscode.window.createWebviewPanel(
-        'pestAI',
-        'Pest AI Assistant',
-        vscode.ViewColumn.One,
-        {
-          enableScripts: true,
-          retainContextWhenHidden: true,
-          localResourceRoots: resourceRoots
-        }
-      );
+    context.subscriptions.push(
+        vscode.commands.registerCommand('pestd3code.openPestAI', () => {
+            if (pestAiPanel) {
+                pestAiPanel.reveal(vscode.ViewColumn.One);
+            } else {
+                // Specify multiple allowed directories
+                const resourceRoots = [
+                    vscode.Uri.file(path.join(context.extensionPath, 'pest-ai', 'frontend', 'dist')),
+                    vscode.Uri.file(path.join(context.extensionPath, 'pest-ai', 'frontend', 'dist', 'pest-ai')),
+                    vscode.Uri.file(path.join(context.extensionPath, 'pest-ai', 'frontend', 'dist', 'modflow')),
+                    vscode.Uri.file(path.join(context.extensionPath, 'pest-ai', 'frontend', 'dist', 'pestd3code'))
+                ];
 
-      pestAiPanel.webview.html = getPestAIHtmlContent(pestAiPanel.webview, context);
 
-      pestAiPanel.onDidDispose(() => {
-        pestAiPanel = undefined;
-      }, null, context.subscriptions);
-    }
-  })
-);
 
-    
+                pestAiPanel = vscode.window.createWebviewPanel(
+                    'pestAI',
+                    'Pest AI Assistant',
+                    vscode.ViewColumn.One,
+                    {
+                        enableScripts: true,
+                        retainContextWhenHidden: true,
+                        localResourceRoots: resourceRoots
+                    }
+                );
+
+                pestAiPanel.webview.html = getPestAIHtmlContent(pestAiPanel.webview, context);
+
+                pestAiPanel.onDidDispose(() => {
+                    pestAiPanel = undefined;
+                }, null, context.subscriptions);
+            }
+        })
+    );
+
+
 
     /**
      * Function to get the HTML content for the Pest AI panel.
@@ -4686,65 +4688,65 @@ context.subscriptions.push(
      * replaces resource paths with webview URIs.
      */
 
-    
     function getPestAIHtmlContent(webview: vscode.Webview, context: vscode.ExtensionContext): string {
         const htmlFilePath = path.join(context.extensionPath, 'pest-ai', 'frontend', 'dist', 'index.html');
         console.log(`Loading Pest AI HTML from: ${htmlFilePath}`);
-        
+
         let html = fs.readFileSync(htmlFilePath, 'utf8');
-        
+
         // Base directory for built files
         const distPath = path.join(context.extensionPath, 'pest-ai', 'frontend', 'dist');
         console.log(`Using Pest AI dist path: ${distPath}`);
-        
+
         html = html.replace(/(src|href)="\/([^"]+)"/g, (_match, attr, relPath) => {
-          let resourcePath = path.join(distPath, relPath);
-          if (fs.existsSync(resourcePath)) {
-            console.log(`Found ${attr}="${relPath}" directly in dist: ${resourcePath}`);
-          } else {
-            // Try in 'dist/pest-ai'
-            let altPath = path.join(distPath, 'pest-ai', relPath);
-            if (fs.existsSync(altPath)) {
-              resourcePath = altPath;
-              console.log(`Found ${attr}="${relPath}" in dist/pest-ai: ${resourcePath}`);
+            let resourcePath = path.join(distPath, relPath);
+            if (fs.existsSync(resourcePath)) {
+                console.log(`Found ${attr}="${relPath}" directly in dist: ${resourcePath}`);
             } else {
-              // Try in 'dist/modflow'
-              altPath = path.join(distPath, 'modflow', relPath);
-              if (fs.existsSync(altPath)) {
-                resourcePath = altPath;
-                console.log(`Found ${attr}="${relPath}" in dist/modflow: ${resourcePath}`);
-              } else {
-                // Try in 'dist/pestd3code'
-                altPath = path.join(distPath, 'pestd3code', relPath);
+                // Try in 'dist/pest-ai'
+                let altPath = path.join(distPath, 'pest-ai', relPath);
                 if (fs.existsSync(altPath)) {
-                  resourcePath = altPath;
-                  console.log(`Found ${attr}="${relPath}" in dist/pestd3code: ${resourcePath}`);
+                    resourcePath = altPath;
+                    console.log(`Found ${attr}="${relPath}" in dist/pest-ai: ${resourcePath}`);
                 } else {
-                  // Fall back to extension root
-                  resourcePath = path.join(context.extensionPath, relPath);
-                  if (fs.existsSync(resourcePath)) {
-                    console.log(`Not found in dist. Using extension root for ${attr}="${relPath}": ${resourcePath}`);
-                  } else {
-                    console.warn(`Resource ${attr}="${relPath}" not found in any expected location. Last attempted: ${resourcePath}`);
-                  }
+                    // Try in 'dist/modflow'
+                    altPath = path.join(distPath, 'modflow', relPath);
+                    if (fs.existsSync(altPath)) {
+                        resourcePath = altPath;
+                        console.log(`Found ${attr}="${relPath}" in dist/modflow: ${resourcePath}`);
+                    } else {
+                        // Try in 'dist/pestd3code'
+                        altPath = path.join(distPath, 'pestd3code', relPath);
+                        if (fs.existsSync(altPath)) {
+                            resourcePath = altPath;
+                            console.log(`Found ${attr}="${relPath}" in dist/pestd3code: ${resourcePath}`);
+                        } else {
+                            // Fall back to extension root
+                            resourcePath = path.join(context.extensionPath, relPath);
+                            if (fs.existsSync(resourcePath)) {
+                                console.log(`Not found in dist. Using extension root for ${attr}="${relPath}": ${resourcePath}`);
+                            } else {
+                                console.warn(`Resource ${attr}="${relPath}" not found in any expected location. Last attempted: ${resourcePath}`);
+                            }
+                        }
+                    }
                 }
-              }
             }
-          }
-          const resourceUri = webview.asWebviewUri(vscode.Uri.file(resourcePath));
-          console.log(`Replacing ${attr} for "${relPath}" with URI: ${resourceUri}`);
-          return `${attr}="${resourceUri}"`;
+            const resourceUri = webview.asWebviewUri(vscode.Uri.file(resourcePath));
+            console.log(`Replacing ${attr} for "${relPath}" with URI: ${resourceUri}`);
+            return `${attr}="${resourceUri}"`;
         });
-        
+
         const cspMetaTag = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https: data:; script-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; connect-src http://localhost:8000 http://127.0.0.1:8000;">`;
         html = html.replace(/<meta charset="UTF-8">/, `<meta charset="UTF-8">\n${cspMetaTag}`);
         console.log('Injected CSP meta tag into HTML.');
-        
+
         return html;
-      }
-      
-      
-      
+    }
+
+
+
+
 
     /*========================================================
     PUTTING IT ALL TOGETHER
