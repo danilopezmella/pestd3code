@@ -1,5 +1,12 @@
 # Change Log
 
+### 0.1.7
+- **Fixed PEST++ Hover Functionality**:
+  - Fixed hover functionality for PEST++ sections to properly detect and display variable information.
+  - Improved section detection logic to accurately identify PEST++ sections and variables.
+  - Enhanced hover content formatting for better readability of PEST++ variable descriptions.
+
+
 ### 0.1.6
 - **Fixed Hover for Regularization description**:
   - Fixed the hover functionality for Regularization description to ensure consistent behavior and included detailed descriptions for each variable in the regularization section.
