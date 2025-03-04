@@ -71,19 +71,40 @@ export interface VariableLine3Def {
 async function loadDescriptions(
     context: vscode.ExtensionContext
 ): Promise<void> {
-    const resourcePath = vscode.Uri.joinPath(
-        context.extensionUri,
-        "resources",
-        "descriptions.csv"
-    );
-    const csvContent = await fs.promises.readFile(resourcePath.fsPath, "utf-8");
-    const records = parse(csvContent, {
-        columns: true, // Usa la primera fila como encabezados
-        skip_empty_lines: true, // Ignorar líneas vacías
-        trim: true, // Elimina espacios al inicio y al final
-        relax_column_count: true, // Relaja el conteo de columnas por fila
-    });
-    descriptions = records as DescriptionData[];
+    console.log("\n=== Loading Descriptions from CSV ===");
+    try {
+        const resourcePath = vscode.Uri.joinPath(
+            context.extensionUri,
+            "resources",
+            "descriptions.csv"
+        );
+        console.log(`CSV Path: ${resourcePath.fsPath}`);
+        
+        const csvContent = await fs.promises.readFile(resourcePath.fsPath, "utf-8");
+        console.log(`CSV Content Length: ${csvContent.length} characters`);
+        
+        const records = parse(csvContent, {
+            columns: true, // Use first row as headers
+            skip_empty_lines: true, // Ignore empty lines
+            trim: true, // Remove spaces at beginning and end
+            relax_column_count: true, // Relax column count per row
+        });
+        
+        descriptions = records as DescriptionData[];
+        console.log(`Loaded ${descriptions.length} descriptions from CSV`);
+        
+        // Log a few sample descriptions to verify content
+        if (descriptions.length > 0) {
+            console.log("Sample descriptions:");
+            descriptions.slice(0, 3).forEach((desc, index) => {
+                console.log(`  ${index + 1}. Variable: ${desc.Variable}, Type: ${desc.Type}, Description: ${desc.Description}`);
+            });
+        }
+        
+        console.log("=== Descriptions Loaded Successfully ===");
+    } catch (error) {
+        console.error("Error loading descriptions:", error);
+    }
 }
 
 // #endregion Load descriptions from CSV file
@@ -250,8 +271,11 @@ class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
         document: vscode.TextDocument,
         _token: vscode.CancellationToken
     ): vscode.ProviderResult<vscode.SymbolInformation[]> {
+        console.log("\n=== Document Symbol Provider Started ===");
+        console.log(`Processing document: ${document.fileName}`);
+        
         const symbols: vscode.SymbolInformation[] = [];
-        const regex = /^\*\s*(.+)|^\+\+\s*/; // Detecta líneas que comienzan con '* ' o '++'
+        const regex = /^\*\s*(.+)|^\+\+\s*(.*)/; // Detects lines starting with '* ' or '++'
         const emojiMap: Record<string, string> = {
             "Control data": "🔧",
             "Singular value decomposition": "🧮",
@@ -267,7 +291,7 @@ class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
             "PEST++ section": "🌐",
         };
 
-        // Agregar símbolo especial para abrir el manual
+        // Add special symbol for opening the manual
         symbols.push(
             new vscode.SymbolInformation(
                 "📖 Open Manual",
@@ -277,88 +301,102 @@ class PestDocumentSymbolProvider implements vscode.DocumentSymbolProvider {
             )
         );
 
-        let inPestPlusSection = false; // Bandera para bloques Pest++
         let currentSymbol: vscode.SymbolInformation | null = null;
-
+        let sectionStartLine = 0;
+        
+        // First pass to identify all sections
+        const sections: {start: number, end: number, name: string, isPestPlus: boolean}[] = [];
+        
+        // Debug: Print all lines that start with "++"
+        console.log("Scanning for PEST++ sections (lines starting with '++'):");
         for (let i = 0; i < document.lineCount; i++) {
             const line = document.lineAt(i).text;
-            const match = line.match(regex);
-
-            // Si encontramos un encabezado estándar ('* ')
-            if (match && match[1]) {
-                // Cierra la sección anterior
-                if (currentSymbol) {
-                    const end = new vscode.Position(
-                        i - 1,
-                        document.lineAt(i - 1).text.length
-                    );
-                    currentSymbol.location.range = new vscode.Range(
-                        currentSymbol.location.range.start,
-                        end
-                    );
-                }
-
-                inPestPlusSection = false; // Finaliza cualquier bloque Pest++
-                const sectionName =
-                    match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
-
-                const icon = emojiMap[sectionName] || "";
-
-                currentSymbol = new vscode.SymbolInformation(
-                    `${icon} ${sectionName}`,
-                    vscode.SymbolKind.Field,
-                    "",
-                    new vscode.Location(
-                        document.uri,
-                        new vscode.Range(i, 0, i, line.length)
-                    )
-                );
-
-                symbols.push(currentSymbol);
+            const trimmedLine = line.trim();
+            if (trimmedLine.startsWith("++")) {
+                console.log(`  Line ${i+1}: "${trimmedLine}"`);
             }
-            // Si encontramos el inicio de un bloque '++'
-            else if (line.trim().startsWith("++")) {
-                if (!inPestPlusSection) {
-                    if (currentSymbol) {
-                        const end = new vscode.Position(
-                            i - 1,
-                            document.lineAt(i - 1).text.length
-                        );
-                        currentSymbol.location.range = new vscode.Range(
-                            currentSymbol.location.range.start,
-                            end
-                        );
+        }
+        
+        for (let i = 0; i < document.lineCount; i++) {
+            const line = document.lineAt(i).text;
+            const trimmedLine = line.trim();
+            
+            // Check for section headers
+            if (trimmedLine.startsWith("*")) {
+                const match = trimmedLine.match(/^\*\s*(.*)/);
+                if (match && match[1]) {
+                    // If we have a previous section, close it
+                    if (sections.length > 0) {
+                        sections[sections.length - 1].end = i - 1;
                     }
-
-                    inPestPlusSection = true;
-
-                    currentSymbol = new vscode.SymbolInformation(
-                        "🌐 PEST++ section",
-                        vscode.SymbolKind.Field,
-                        "",
-                        new vscode.Location(
-                            document.uri,
-                            new vscode.Range(i, 0, i, line.length)
-                        )
-                    );
-
-                    symbols.push(currentSymbol);
+                    
+                    // Start a new standard section
+                    const sectionName = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+                    sections.push({
+                        start: i,
+                        end: document.lineCount - 1, // Will be updated when next section is found
+                        name: sectionName,
+                        isPestPlus: false
+                    });
+                    
+                    console.log(`Found standard section at line ${i+1}: ${sectionName}`);
                 }
+            } 
+            // Check for PEST++ sections - use exact check for "++" at the start
+            else if (trimmedLine.startsWith("++")) {
+                console.log(`Found potential PEST++ section at line ${i+1}: "${trimmedLine}"`);
+                
+                // If we have a previous section, close it
+                if (sections.length > 0) {
+                    sections[sections.length - 1].end = i - 1;
+                    console.log(`  Closed previous section: ${sections[sections.length - 1].name}, Lines ${sections[sections.length - 1].start+1}-${i}`);
+                }
+                
+                // Start a new PEST++ section
+                sections.push({
+                    start: i,
+                    end: document.lineCount - 1, // Will be updated when next section is found
+                    name: "PEST++ section",
+                    isPestPlus: true
+                });
+                
+                console.log(`  Added PEST++ section starting at line ${i+1}`);
             }
         }
-
-        // Cierra la última sección
-        if (currentSymbol) {
-            const end = new vscode.Position(
-                document.lineCount - 1,
-                document.lineAt(document.lineCount - 1).text.length
+        
+        // Log all detected sections
+        console.log("Detected sections:");
+        sections.forEach((section, index) => {
+            console.log(`  ${index}: ${section.name}, Lines ${section.start+1}-${section.end+1}, PEST++: ${section.isPestPlus}`);
+        });
+        
+        // Create symbols for each section
+        for (const section of sections) {
+            const icon = section.isPestPlus ? "🌐" : (emojiMap[section.name] || "");
+            const symbolName = section.isPestPlus ? "🌐 PEST++ section" : `${icon} ${section.name}`;
+            
+            const symbol = new vscode.SymbolInformation(
+                symbolName,
+                vscode.SymbolKind.Field,
+                "",
+                new vscode.Location(
+                    document.uri,
+                    new vscode.Range(
+                        section.start, 
+                        0, 
+                        section.end, 
+                        document.lineAt(section.end).text.length
+                    )
+                )
             );
-            currentSymbol.location.range = new vscode.Range(
-                currentSymbol.location.range.start,
-                end
-            );
+            
+            symbols.push(symbol);
+            console.log(`Added symbol: ${symbolName}, Range: ${section.start+1}-${section.end+1}`);
         }
 
+        console.log(`Total symbols found: ${symbols.length}`);
+        console.log("=== Document Symbol Provider Completed ===");
+        
         return symbols;
     }
 }
@@ -1760,6 +1798,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         { scheme: 'file', pattern: '**/*.{pst}' },
         {
             provideHover(document, position) {
+                console.log("\n=== Regularisation Hover Provider Started ===");
+                
+                // First check if we're in a PEST++ section
+                const currentLine = document.lineAt(position.line).text.trim();
+                const isPestPlusLine = currentLine.startsWith("++");
+                const isPestPlusSection = isPestPlusLine || document.getText().split('\n').slice(0, position.line).some(l => l.trim().startsWith("++"));
+                
+                if (isPestPlusSection) {
+                    console.log("Detected PEST++ section, skipping regularisation hover");
+                    return null;
+                }
+                
                 // Find current section
                 const sections = detectSectionsRegul(document.getText().split('\n'));
                 const currentSection = findCurrentSectionRegul(sections, position.line);
@@ -4569,41 +4619,115 @@ if (relativeLine === 0) {
     // #region Hover provider for pest++ section
 
     const hoverProviderPlus = vscode.languages.registerHoverProvider(
-        { scheme: "file" },
+        { scheme: "file", pattern: '**/*.{pst}' },  // Limitar a archivos .pst
         {
             async provideHover(document, position) {
-                // Get all symbols from the document
-                const symbolProvider = new PestDocumentSymbolProvider();
-                const symbols = await symbolProvider.provideDocumentSymbols(document, new vscode.CancellationTokenSource().token);
-
-                if (!symbols) {
+                console.log("\n=== PEST++ Hover Provider Started ===");
+                console.log(`Cursor position: Line ${position.line+1}, Character ${position.character}`);
+                
+                // Primero verificar directamente si estamos en una sección PEST++
+                // Verificar si la línea actual comienza con "++"
+                const currentLine = document.lineAt(position.line).text.trim();
+                const isPestPlusLine = currentLine.startsWith("++");
+                
+                // Verificar si hay alguna línea anterior que comience con "++"
+                let isPestPlusSection = isPestPlusLine;
+                if (!isPestPlusSection) {
+                    console.log("Checking previous lines for PEST++ section marker...");
+                    // Buscar en líneas anteriores
+                    for (let i = position.line - 1; i >= 0; i--) {
+                        const line = document.lineAt(i).text.trim();
+                        if (line.startsWith("*")) {
+                            // Encontramos un encabezado de sección antes de encontrar "++"
+                            console.log(`Found section header at line ${i+1} before PEST++ marker`);
+                            break;
+                        }
+                        if (line.startsWith("++")) {
+                            isPestPlusSection = true;
+                            console.log(`Found PEST++ marker at line ${i+1}`);
+                            break;
+                        }
+                    }
+                }
+                
+                if (!isPestPlusSection) {
+                    console.log("Not in a PEST++ section, skipping PEST++ hover");
                     return null;
                 }
-
-                // Find which symbol's range contains our position
-                const currentSymbol = symbols.find(symbol =>
-                    symbol.location.range.contains(position) &&
-                    symbol.name.includes("PEST++")  // Verifica que sea una sección PEST++
+                
+                console.log("In PEST++ section, continuing with hover...");
+                
+                // Obtener la línea completa para analizar
+                const line = document.lineAt(position.line).text;
+                console.log(`Current line text: "${line}"`);
+                
+                // Regex para detectar variables PEST++ (incluyendo con paréntesis)
+                const pestPlusVarRegex = /\+\+(\w+)(?:\(\))?|\b(\w+)(?:\(\))?/g;
+                let match;
+                let word = "";
+                let wordWithoutParens = "";
+                
+                // Buscar todas las coincidencias en la línea
+                while ((match = pestPlusVarRegex.exec(line)) !== null) {
+                    const matchedWord = match[1] || match[2];
+                    const start = match.index + (match[1] ? 2 : 0); // Ajustar si tiene prefijo "++"
+                    const end = start + matchedWord.length + (line.substring(start + matchedWord.length).startsWith("()") ? 2 : 0);
+                    
+                    console.log(`Found potential variable: "${matchedWord}" at positions ${start}-${end}`);
+                    
+                    // Verificar si el cursor está dentro de esta palabra
+                    if (position.character >= start && position.character <= end) {
+                        word = matchedWord;
+                        wordWithoutParens = matchedWord;
+                        console.log(`Cursor is within variable: "${word}"`);
+                        break;
+                    }
+                }
+                
+                // Si no se encontró una palabra, intentar con el método estándar
+                if (!word) {
+                    const wordRange = document.getWordRangeAtPosition(position, SCIENTIFIC_NUMBER_REGEX);
+                    if (!wordRange) {
+                        console.log("No word found under cursor");
+                        return null;
+                    }
+                    
+                    word = document.getText(wordRange);
+                    wordWithoutParens = word.replace(/\(\)$/, "");
+                }
+                
+                console.log(`Word found: "${word}", without parentheses: "${wordWithoutParens}"`);
+                
+                // Buscar en las descripciones cargadas desde CSV, filtrando por Parent "PlusPlus"
+                let description = descriptions.find((desc) => 
+                    desc.Variable === wordWithoutParens && 
+                    desc.Parent.toLowerCase() === "plusplus"
                 );
-
-                // Only proceed if we're in a PEST++ section
-                if (!currentSymbol) {
-                    return null;
+                
+                // Si no se encuentra con el nombre exacto, intentar buscar con "ies_" prefijo
+                if (!description && wordWithoutParens.startsWith("ies_")) {
+                    console.log(`Trying to find description for "${wordWithoutParens}" without "ies_" prefix`);
+                    const wordWithoutPrefix = wordWithoutParens.substring(4); // Quitar "ies_"
+                    description = descriptions.find((desc) => 
+                        desc.Variable === wordWithoutPrefix && 
+                        desc.Parent.toLowerCase() === "plusplus"
+                    );
                 }
-
-                // Get the word under cursor
-                const wordRange = document.getWordRangeAtPosition(position, SCIENTIFIC_NUMBER_REGEX);
-                if (!wordRange) {
-                    return null;
-                }
-
-                const word = document.getText(wordRange);
-                const description = descriptions.find((desc) => desc.Variable === word);
-
+                
+                // Si aún no se encuentra, buscar cualquier descripción que coincida con el nombre
                 if (!description) {
+                    console.log(`No PlusPlus description found, trying any parent for: ${wordWithoutParens}`);
+                    description = descriptions.find((desc) => desc.Variable === wordWithoutParens);
+                }
+                
+                if (!description) {
+                    console.log(`No description found for variable: ${wordWithoutParens}`);
                     return null;
                 }
-
+                
+                console.log(`Description found: ${description.Description}`);
+                console.log("=== PEST++ Hover Provider Completed ===");
+                
                 return new vscode.Hover(
                     new vscode.MarkdownString(
                         `### 🌐 PEST++ Variable: **${description.Variable}**\n\n` +
@@ -4622,7 +4746,7 @@ if (relativeLine === 0) {
 
 
     context.subscriptions.push(hoverProviderPlus);
-    // Escucha cambios en el editor activo
+    // Listen for changes in the active editor
     vscode.window.onDidChangeActiveTextEditor((editor) => {
         if (editor) {
             //  applyDecorations(editor);
@@ -4982,3 +5106,53 @@ function parseLineByIndexSVD(
     console.log('Mapped variables:', mapped);
     return mapped;
 }
+
+// Function to ensure PEST++ variables are in the descriptions
+function ensurePestPlusDescriptions() {
+    console.log("\n=== Ensuring PEST++ Descriptions ===");
+    
+    // List of common PEST++ variables that might be missing
+    const pestPlusVariables = [
+        {
+            Variable: "ies_add_base",
+            Type: "string",
+            Description: "Adds a base realization to the ensemble",
+            Parent: "PEST++",
+            Mandatory: "false"
+        },
+        {
+            Variable: "ies_num_reals",
+            Type: "integer",
+            Description: "Number of realizations in the ensemble",
+            Parent: "PEST++",
+            Mandatory: "false"
+        },
+        {
+            Variable: "ies_subset_size",
+            Type: "integer",
+            Description: "Number of realizations to use in each iteration",
+            Parent: "PEST++",
+            Mandatory: "false"
+        }
+    ];
+    
+    // Check if each variable exists, add if missing
+    for (const variable of pestPlusVariables) {
+        const exists = descriptions.some(desc => 
+            desc.Variable === variable.Variable || 
+            desc.Variable.toLowerCase() === variable.Variable.toLowerCase()
+        );
+        
+        if (!exists) {
+            console.log(`Adding missing PEST++ variable: ${variable.Variable}`);
+            descriptions.push(variable as DescriptionData);
+        } else {
+            console.log(`PEST++ variable already exists: ${variable.Variable}`);
+        }
+    }
+    
+    console.log(`Total descriptions after ensuring PEST++ variables: ${descriptions.length}`);
+    console.log("=== PEST++ Descriptions Ensured ===");
+}
+
+// #region Load descriptions from CSV file
